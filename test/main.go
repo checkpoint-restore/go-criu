@@ -9,19 +9,21 @@ import (
 	"strconv"
 )
 
+// TestNfy struct
 type TestNfy struct {
-	criu.CriuNoNotify
+	criu.NoNotify
 }
 
+// PreDump test function
 func (c TestNfy) PreDump() error {
 	fmt.Printf("TEST PRE DUMP\n")
 	return nil
 }
 
-func doDump(c *criu.Criu, pid_s string, img_dir string, pre bool, prev_img string) error {
+func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) error {
 	fmt.Printf("Dumping\n")
-	pid, _ := strconv.Atoi(pid_s)
-	img, err := os.Open(img_dir)
+	pid, _ := strconv.Atoi(pidS)
+	img, err := os.Open(imgDir)
 	if err != nil {
 		return fmt.Errorf("can't open image dir (%s)", err)
 	}
@@ -34,8 +36,8 @@ func doDump(c *criu.Criu, pid_s string, img_dir string, pre bool, prev_img strin
 		LogFile:     proto.String("dump.log"),
 	}
 
-	if prev_img != "" {
-		opts.ParentImg = proto.String(prev_img)
+	if prevImg != "" {
+		opts.ParentImg = proto.String(prevImg)
 		opts.TrackMem = proto.Bool(true)
 	}
 

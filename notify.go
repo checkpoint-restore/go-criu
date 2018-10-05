@@ -1,6 +1,7 @@
 package criu
 
-type CriuNotify interface {
+//Notify interface
+type Notify interface {
 	PreDump() error
 	PostDump() error
 	PreRestore() error
@@ -12,41 +13,51 @@ type CriuNotify interface {
 	PostResume() error
 }
 
-type CriuNoNotify struct {
+// NoNotify struct
+type NoNotify struct {
 }
 
-func (c CriuNoNotify) PreDump() error {
+// PreDump NoNotify
+func (c NoNotify) PreDump() error {
 	return nil
 }
 
-func (c CriuNoNotify) PostDump() error {
+// PostDump NoNotify
+func (c NoNotify) PostDump() error {
 	return nil
 }
 
-func (c CriuNoNotify) PreRestore() error {
+// PreRestore NoNotify
+func (c NoNotify) PreRestore() error {
 	return nil
 }
 
-func (c CriuNoNotify) PostRestore(pid int32) error {
+// PostRestore NoNotify
+func (c NoNotify) PostRestore(pid int32) error {
 	return nil
 }
 
-func (c CriuNoNotify) NetworkLock() error {
+// NetworkLock NoNotify
+func (c NoNotify) NetworkLock() error {
 	return nil
 }
 
-func (c CriuNoNotify) NetworkUnlock() error {
+// NetworkUnlock NoNotify
+func (c NoNotify) NetworkUnlock() error {
 	return nil
 }
 
-func (c CriuNoNotify) SetupNamespaces(pid int32) error {
+// SetupNamespaces NoNotify
+func (c NoNotify) SetupNamespaces(pid int32) error {
 	return nil
 }
 
-func (c CriuNoNotify) PostSetupNamespaces() error {
+// PostSetupNamespaces NoNotify
+func (c NoNotify) PostSetupNamespaces() error {
 	return nil
 }
 
-func (c CriuNoNotify) PostResume() error {
+// PostResume NoNotify
+func (c NoNotify) PostResume() error {
 	return nil
 }

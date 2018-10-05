@@ -14,7 +14,7 @@ import (
 )
 
 type testLocal struct {
-	criu.CriuNoNotify
+	criu.NoNotify
 	r *testRemote
 }
 

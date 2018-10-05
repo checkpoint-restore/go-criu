@@ -1,5 +1,7 @@
 all: build
 
+lint:
+	@golint . test
 build:
 	@go build -v
 
@@ -20,4 +22,4 @@ clean:
 	@rm -f test/test test/piggie
 	@rm -rf image
 
-.PHONY: build test clean
+.PHONY: build test clean lint

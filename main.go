@@ -12,15 +12,18 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// Criu struct
 type Criu struct {
-	swrk_cmd *exec.Cmd
-	swrk_sk  *os.File
+	swrkCmd *exec.Cmd
+	swrkSk  *os.File
 }
 
+// MakeCriu returns the Criu object required for most operations
 func MakeCriu() *Criu {
 	return &Criu{}
 }
 
+// Prepare sets up everything for the RPC communication to CRIU
 func (c *Criu) Prepare() error {
 	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_SEQPACKET, 0)
 	if err != nil {
@@ -41,55 +44,56 @@ func (c *Criu) Prepare() error {
 		return err
 	}
 
-	c.swrk_cmd = cmd
-	c.swrk_sk = cln
+	c.swrkCmd = cmd
+	c.swrkSk = cln
 
 	return nil
 }
 
+// Cleanup cleans up
 func (c *Criu) Cleanup() {
-	if c.swrk_cmd != nil {
-		c.swrk_sk.Close()
-		c.swrk_sk = nil
-		c.swrk_cmd.Wait()
-		c.swrk_cmd = nil
+	if c.swrkCmd != nil {
+		c.swrkSk.Close()
+		c.swrkSk = nil
+		c.swrkCmd.Wait()
+		c.swrkCmd = nil
 	}
 }
 
-func (c *Criu) sendAndRecv(req_b []byte) ([]byte, int, error) {
-	cln := c.swrk_sk
-	_, err := cln.Write(req_b)
+func (c *Criu) sendAndRecv(reqB []byte) ([]byte, int, error) {
+	cln := c.swrkSk
+	_, err := cln.Write(reqB)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	resp_b := make([]byte, 2*4096)
-	n, err := cln.Read(resp_b)
+	respB := make([]byte, 2*4096)
+	n, err := cln.Read(respB)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return resp_b, n, nil
+	return respB, n, nil
 }
 
-func (c *Criu) doSwrk(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy CriuNotify) error {
-	resp, err := c.doSwrkWithResp(req_type, opts, nfy)
+func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) error {
+	resp, err := c.doSwrkWithResp(reqType, opts, nfy)
 	if err != nil {
 		return err
 	}
-	resp_type := resp.GetType()
-	if resp_type != req_type {
+	respType := resp.GetType()
+	if respType != reqType {
 		return errors.New("unexpected responce")
 	}
 
 	return nil
 }
 
-func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy CriuNotify) (*rpc.CriuResp, error) {
+func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) (*rpc.CriuResp, error) {
 	var resp *rpc.CriuResp
 
 	req := rpc.CriuReq{
-		Type: &req_type,
+		Type: &reqType,
 		Opts: opts,
 	}
 
@@ -97,7 +101,7 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 		opts.NotifyScripts = proto.Bool(true)
 	}
 
-	if c.swrk_cmd == nil {
+	if c.swrkCmd == nil {
 		err := c.Prepare()
 		if err != nil {
 			return nil, err
@@ -107,18 +111,18 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 	}
 
 	for {
-		req_b, err := proto.Marshal(&req)
+		reqB, err := proto.Marshal(&req)
 		if err != nil {
 			return nil, err
 		}
 
-		resp_b, resp_s, err := c.sendAndRecv(req_b)
+		respB, respS, err := c.sendAndRecv(reqB)
 		if err != nil {
 			return nil, err
 		}
 
 		resp = &rpc.CriuResp{}
-		err = proto.Unmarshal(resp_b[:resp_s], resp)
+		err = proto.Unmarshal(respB[:respS], resp)
 		if err != nil {
 			return nil, err
 		}
@@ -128,8 +132,8 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 				resp.GetCrErrmsg(), resp.GetCrErrno())
 		}
 
-		resp_type := resp.GetType()
-		if resp_type != rpc.CriuReqType_NOTIFY {
+		respType := resp.GetType()
+		if respType != rpc.CriuReqType_NOTIFY {
 			break
 		}
 		if nfy == nil {
@@ -165,7 +169,7 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 		}
 
 		req = rpc.CriuReq{
-			Type:          &resp_type,
+			Type:          &respType,
 			NotifySuccess: proto.Bool(true),
 		}
 	}
@@ -173,22 +177,27 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 	return resp, nil
 }
 
-func (c *Criu) Dump(opts rpc.CriuOpts, nfy CriuNotify) error {
+// Dump dumps a process
+func (c *Criu) Dump(opts rpc.CriuOpts, nfy Notify) error {
 	return c.doSwrk(rpc.CriuReqType_DUMP, &opts, nfy)
 }
 
-func (c *Criu) Restore(opts rpc.CriuOpts, nfy CriuNotify) error {
+// Restore restores a process
+func (c *Criu) Restore(opts rpc.CriuOpts, nfy Notify) error {
 	return c.doSwrk(rpc.CriuReqType_RESTORE, &opts, nfy)
 }
 
-func (c *Criu) PreDump(opts rpc.CriuOpts, nfy CriuNotify) error {
+// PreDump does a pre-dump
+func (c *Criu) PreDump(opts rpc.CriuOpts, nfy Notify) error {
 	return c.doSwrk(rpc.CriuReqType_PRE_DUMP, &opts, nfy)
 }
 
+// StartPageServer starts the page server
 func (c *Criu) StartPageServer(opts rpc.CriuOpts) error {
 	return c.doSwrk(rpc.CriuReqType_PAGE_SERVER, &opts, nil)
 }
 
+// StartPageServerChld starts the page server and returns PID and port
 func (c *Criu) StartPageServerChld(opts rpc.CriuOpts) (int, int, error) {
 	resp, err := c.doSwrkWithResp(rpc.CriuReqType_PAGE_SERVER_CHLD, &opts, nil)
 	if err != nil {
