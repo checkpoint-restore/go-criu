@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/checkpoint-restore/go-criu/rpc"
 	"github.com/golang/protobuf/proto"
-	"github.com/checkpoint-restore/criu/lib/go/src/rpc"
 )
 
 type Criu struct {
