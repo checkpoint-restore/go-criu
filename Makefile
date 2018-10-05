@@ -1,4 +1,4 @@
-all: build
+all: build test phaul phaul-test
 
 lint:
 	@golint . test
@@ -18,8 +18,20 @@ test: test/test test/piggie
 	test/test restore image
 	killall -9 piggie || :
 
+phaul:
+	@cd phaul; go build -v
+
+test/phaul: test/phaul-main.go
+	@go build -v -o test/phaul test/phaul-main.go
+
+phaul-test: test/phaul test/piggie
+	rm -rf image
+	test/piggie
+	test/phaul `pidof piggie`
+	killall -9 piggie || :
+
 clean:
-	@rm -f test/test test/piggie
+	@rm -f test/test test/piggie test/phaul
 	@rm -rf image
 
-.PHONY: build test clean lint
+.PHONY: build test clean lint phaul

@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/checkpoint-restore/go-criu"
-	"github.com/checkpoint-restore/go-criu/phaul/src/phaul"
+	"github.com/checkpoint-restore/go-criu/phaul"
 	"github.com/checkpoint-restore/go-criu/rpc"
 	"github.com/golang/protobuf/proto"
 )
@@ -23,7 +23,7 @@ type testRemote struct {
 }
 
 /* Dir where test will put dump images */
-const images_dir = "test_images"
+const images_dir = "image"
 
 func prepareImages() error {
 	err := os.Mkdir(images_dir, 0700)
