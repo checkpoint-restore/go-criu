@@ -7,10 +7,10 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/checkpoint-restore/go-criu"
+	"github.com/checkpoint-restore/go-criu/phaul/src/phaul"
+	"github.com/checkpoint-restore/go-criu/rpc"
 	"github.com/golang/protobuf/proto"
-	"github.com/checkpoint-restore/criu/lib/go/src/criu"
-	"github.com/checkpoint-restore/criu/lib/go/src/rpc"
-	"github.com/checkpoint-restore/criu/phaul/src/phaul"
 )
 
 type testLocal struct {

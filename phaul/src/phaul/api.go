@@ -1,7 +1,7 @@
 package phaul
 
 import (
-	"github.com/checkpoint-restore/criu/lib/go/src/criu"
+	"github.com/checkpoint-restore/go-criu"
 )
 
 /*
