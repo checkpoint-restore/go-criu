@@ -1,7 +1,7 @@
 all: build test phaul phaul-test
 
 lint:
-	@golint . test
+	@golint . test phaul
 build:
 	@go build -v
 

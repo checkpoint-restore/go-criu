@@ -8,8 +8,8 @@ import (
 )
 
 /* FIXME: report stats from CriuResp */
-func criuGetDumpStats(img_dir *os.File) (*stats.DumpStatsEntry, error) {
-	stf, err := os.Open(img_dir.Name() + "/stats-dump")
+func criuGetDumpStats(imgDir *os.File) (*stats.DumpStatsEntry, error) {
+	stf, err := os.Open(imgDir.Name() + "/stats-dump")
 	if err != nil {
 		return nil, err
 	}

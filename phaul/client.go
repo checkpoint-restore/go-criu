@@ -13,24 +13,24 @@ const minPagesWritten uint64 = 64
 const maxIters int = 8
 const maxGrowDelta int64 = 32
 
-type PhaulClient struct {
-	local  PhaulLocal
-	remote PhaulRemote
-	cfg    PhaulConfig
+// Client struct
+type Client struct {
+	local  Local
+	remote Remote
+	cfg    Config
 }
 
-/*
- * Main entry point. Caller should create the client object by
- * passing here local, remote and comm. See comment in corresponding
- * interfaces/structs for explanation.
- *
- * Then call client.Migrate() and enjoy :)
- */
-func MakePhaulClient(l PhaulLocal, r PhaulRemote, c PhaulConfig) (*PhaulClient, error) {
-	return &PhaulClient{local: l, remote: r, cfg: c}, nil
+// MakePhaulClient function
+// Main entry point. Caller should create the client object by
+// passing here local, remote and comm. See comment in corresponding
+// interfaces/structs for explanation.
+//
+// Then call client.Migrate() and enjoy :)
+func MakePhaulClient(l Local, r Remote, c Config) (*Client, error) {
+	return &Client{local: l, remote: r, cfg: c}, nil
 }
 
-func isLastIter(iter int, stats *stats.DumpStatsEntry, prev_stats *stats.DumpStatsEntry) bool {
+func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStatsEntry) bool {
 	if iter >= maxIters {
 		fmt.Printf("`- max iters reached\n")
 		return true
@@ -42,16 +42,17 @@ func isLastIter(iter int, stats *stats.DumpStatsEntry, prev_stats *stats.DumpSta
 		return true
 	}
 
-	pages_delta := int64(pagesWritten) - int64(prev_stats.GetPagesWritten())
-	if pages_delta >= maxGrowDelta {
-		fmt.Printf("`- grow iter (%d) reached\n", int(pages_delta))
+	pagesDelta := int64(pagesWritten) - int64(prevStats.GetPagesWritten())
+	if pagesDelta >= maxGrowDelta {
+		fmt.Printf("`- grow iter (%d) reached\n", int(pagesDelta))
 		return true
 	}
 
 	return false
 }
 
-func (pc *PhaulClient) Migrate() error {
+// Migrate function
+func (pc *Client) Migrate() error {
 	criu := criu.MakeCriu()
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
@@ -74,7 +75,7 @@ func (pc *PhaulClient) Migrate() error {
 	if err != nil {
 		return err
 	}
-	prev_stats := &stats.DumpStatsEntry{}
+	prevStats := &stats.DumpStatsEntry{}
 	iter := 0
 
 	for {
@@ -83,19 +84,19 @@ func (pc *PhaulClient) Migrate() error {
 			return err
 		}
 
-		prev_p := imgs.lastImagesDir()
-		img_dir, err := imgs.openNextDir()
+		prevP := imgs.lastImagesDir()
+		imgDir, err := imgs.openNextDir()
 		if err != nil {
 			return err
 		}
 
-		opts.ImagesDirFd = proto.Int32(int32(img_dir.Fd()))
-		if prev_p != "" {
-			opts.ParentImg = proto.String(prev_p)
+		opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
+		if prevP != "" {
+			opts.ParentImg = proto.String(prevP)
 		}
 
 		err = criu.PreDump(opts, nil)
-		img_dir.Close()
+		imgDir.Close()
 		if err != nil {
 			return err
 		}
@@ -105,22 +106,22 @@ func (pc *PhaulClient) Migrate() error {
 			return err
 		}
 
-		st, err := criuGetDumpStats(img_dir)
+		st, err := criuGetDumpStats(imgDir)
 		if err != nil {
 			return err
 		}
 
-		if isLastIter(iter, st, prev_stats) {
+		if isLastIter(iter, st, prevStats) {
 			break
 		}
 
-		prev_stats = st
+		prevStats = st
 	}
 
 	err = pc.remote.StartIter()
 	if err == nil {
-		prev_p := imgs.lastImagesDir()
-		err = pc.local.DumpCopyRestore(criu, pc.cfg, prev_p)
+		prevP := imgs.lastImagesDir()
+		err = pc.local.DumpCopyRestore(criu, pc.cfg, prevP)
 		err2 := pc.remote.StopIter()
 		if err == nil {
 			err = err2

@@ -10,18 +10,18 @@ import (
 	"path/filepath"
 )
 
-type PhaulServer struct {
-	cfg     PhaulConfig
+// Server struct
+type Server struct {
+	cfg     Config
 	imgs    *images
 	cr      *criu.Criu
 	process *os.Process
 }
 
-/*
- * Main entry point. Make the server with comm and call PhaulRemote
- * methods on it upon client requests.
- */
-func MakePhaulServer(c PhaulConfig) (*PhaulServer, error) {
+// MakePhaulServer function
+// Main entry point. Make the server with comm and call PhaulRemote
+// methods on it upon client requests.
+func MakePhaulServer(c Config) (*Server, error) {
 	img, err := preparePhaulImages(c.Wdir)
 	if err != nil {
 		return nil, err
@@ -29,13 +29,12 @@ func MakePhaulServer(c PhaulConfig) (*PhaulServer, error) {
 
 	cr := criu.MakeCriu()
 
-	return &PhaulServer{imgs: img, cfg: c, cr: cr}, nil
+	return &Server{imgs: img, cfg: c, cr: cr}, nil
 }
 
-/*
- * PhaulRemote methods
- */
-func (s *PhaulServer) StartIter() error {
+//
+// StartIter phaul.Remote methods
+func (s *Server) StartIter() error {
 	fmt.Printf("S: start iter\n")
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(s.cfg.Memfd)),
@@ -46,20 +45,20 @@ func (s *PhaulServer) StartIter() error {
 		Ps:       &psi,
 	}
 
-	prev_p := s.imgs.lastImagesDir()
-	img_dir, err := s.imgs.openNextDir()
+	prevP := s.imgs.lastImagesDir()
+	imgDir, err := s.imgs.openNextDir()
 	if err != nil {
 		return err
 	}
-	defer img_dir.Close()
+	defer imgDir.Close()
 
-	opts.ImagesDirFd = proto.Int32(int32(img_dir.Fd()))
-	if prev_p != "" {
-		p, err := filepath.Abs(img_dir.Name())
+	opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
+	if prevP != "" {
+		p, err := filepath.Abs(imgDir.Name())
 		if err != nil {
 			return err
 		}
-		rel, err := filepath.Rel(p, prev_p)
+		rel, err := filepath.Rel(p, prevP)
 		if err != nil {
 			return err
 		}
@@ -79,7 +78,8 @@ func (s *PhaulServer) StartIter() error {
 	return nil
 }
 
-func (s *PhaulServer) StopIter() error {
+// StopIter function
+func (s *Server) StopIter() error {
 	state, err := s.process.Wait()
 	if err != nil {
 		return nil
@@ -91,13 +91,14 @@ func (s *PhaulServer) StopIter() error {
 	return nil
 }
 
-/*
- * Server-local methods
- */
-func (s *PhaulServer) LastImagesDir() string {
+// Server-local methods
+
+// LastImagesDir function
+func (s *Server) LastImagesDir() string {
 	return s.imgs.lastImagesDir()
 }
 
-func (s *PhaulServer) GetCriu() *criu.Criu {
+// GetCriu function
+func (s *Server) GetCriu() *criu.Criu {
 	return s.cr
 }
