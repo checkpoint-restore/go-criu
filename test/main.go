@@ -56,6 +56,23 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 // Usage: test $act $pid $images_dir
 func main() {
 	c := criu.MakeCriu()
+	// Read out CRIU version
+	version, err := c.GetCriuVersion()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println("CRIU version", version)
+	// Check if version at least 3.2
+	result, err := c.IsCriuAtLeast(30200)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if !result {
+		fmt.Println("CRIU too old")
+		os.Exit(1)
+	}
 	act := os.Args[1]
 	switch act {
 	case "dump":
