@@ -27,7 +27,7 @@ test: test/test test/piggie
 	test/piggie
 	test/test dump `pidof piggie` image
 	test/test restore image
-	killall -9 piggie || :
+	pkill -9 piggie || :
 
 phaul:
 	@cd phaul; go build -v
@@ -39,7 +39,7 @@ phaul-test: test/phaul test/piggie
 	rm -rf image
 	test/piggie
 	test/phaul `pidof piggie`
-	killall -9 piggie || :
+	pkill -9 piggie || :
 
 clean:
 	@rm -f test/test test/piggie test/phaul
