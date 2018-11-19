@@ -44,10 +44,17 @@ phaul-test: test/phaul test/piggie
 clean:
 	@rm -f test/test test/piggie test/phaul
 	@rm -rf image
+	@rm -f rpc/rpc.proto
 
 install.tools:
 	if [ ! -x "$(GOBIN)/golint" ]; then \
 		$(GO) get -u golang.org/x/lint/golint; \
 	fi
+
+rpc/rpc.proto:
+	curl -s https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@
+
+rpc/rpc.pb.go: rpc/rpc.proto
+	protoc --go_out=. $^
 
 .PHONY: build test clean lint phaul
