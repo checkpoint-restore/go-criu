@@ -61,6 +61,11 @@ by adding a "Signed-off-by" line containing the contributor's name and e-mail
 to every commit message. Your signature certifies that you wrote the patch or
 otherwise have the right to pass it on as an open-source patch.
 
-### License
+### License and copyright
 
-The license of go-criu is the Apache 2.0 license.
+Unless mentioned otherwise in a specific file's header, all code in
+this project is released under the Apache 2.0 license.
+
+The author of a change remains the copyright holder of their code
+(no copyright assignment). The list of authors and contributors can be
+retrieved from the git commit history and in some cases, the file headers.
