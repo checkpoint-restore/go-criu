@@ -219,8 +219,8 @@ func (c *Criu) GetCriuVersion() (int, error) {
 		return 0, fmt.Errorf("Unexpected CRIU RPC response")
 	}
 
-	version := int(*resp.GetVersion().Major) * 10000
-	version += int(*resp.GetVersion().Minor) * 100
+	version := int(*resp.GetVersion().MajorNumber) * 10000
+	version += int(*resp.GetVersion().MinorNumber) * 100
 	if resp.GetVersion().Sublevel != nil {
 		version += int(*resp.GetVersion().Sublevel)
 	}
