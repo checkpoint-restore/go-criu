@@ -3,7 +3,7 @@ package phaul
 import (
 	"os"
 
-	"github.com/checkpoint-restore/go-criu/stats"
+	"github.com/checkpoint-restore/go-criu/v4/stats"
 	"github.com/golang/protobuf/proto"
 )
 
