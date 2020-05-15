@@ -23,11 +23,15 @@ or to just check if at least a certain CRIU version is installed:
 
 ## Releases
 
-go-criu will carry the same version number as CRIU. This implies that each
-go-criu release will pull in the necessary changes from CRIU before making a
-release.
+The first go-criu release was 3.11 based on CRIU 3.11. The initial plan
+was to follow CRIU so that go-criu would carry the same version number as
+CRIU.
 
-The first go-criu release was 3.11 based on CRIU 3.11.
+As go-criu is imported in other projects and as Go modules are expected
+to follow Semantic Versioning go-criu will also follow Semantic Versioning
+starting with the 4.0.0 release.
+
+4.0.0 is based on CRIU 3.14
 
 ## How to contribute
 
