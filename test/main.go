@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/checkpoint-restore/go-criu"
-	"github.com/checkpoint-restore/go-criu/rpc"
+	"github.com/checkpoint-restore/go-criu/v4"
+	"github.com/checkpoint-restore/go-criu/v4/rpc"
 	"github.com/golang/protobuf/proto"
 	"os"
 	"strconv"
