@@ -23,3 +23,9 @@ script:
   - make build phaul test/test test/phaul test/piggie
   # Run actual test as root as it uses CRIU.
   - sudo make test phaul-test
+  # This builds crit-go
+  - cd crit-go
+  - cd magic-gen
+  - make build magicgen
+  # Run test of crit-go
+  - sudo make test 
