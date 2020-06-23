@@ -30,7 +30,7 @@ func main() {
 	mapper := make(map[string]interface{})
 	allmagic := make(map[string]string)
 	magic := make(map[string]string)
-	byname := make(map[string]interface{})
+	byname := make(map[string]string)
 	byval := make(map[uint64]interface{})
 	scanner := bufio.NewScanner(infile)
 	scanner.Split(bufio.ScanLines)
@@ -75,7 +75,7 @@ func main() {
 		*/
 		vhexedv, err := strconv.ParseUint(v, 0, 64)
 		check(err)
-		byname[k] = vhexedv
+		byname[k] = strconv.FormatUint(vhexedv, 10)
 		byval[vhexedv] = k
 	}
 	// byval and byname append to a master map to be converted to json
