@@ -1,5 +1,5 @@
 language: go
-sudo: required
+dist: bionic
 os:
   - linux
 go:
@@ -21,7 +21,7 @@ install:
   - cd ..
 script:
   # This builds the code without running the tests.
-  - make build phaul test/test test/phaul test/piggie
+  - make lint build phaul test/test test/phaul test/piggie
   # Run actual test as root as it uses CRIU.
   - sudo make test phaul-test
   # This builds crit-go
