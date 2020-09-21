@@ -12,7 +12,8 @@ endif
 all: build test phaul phaul-test
 
 lint:
-	@golint . test phaul
+	@golint -set_exit_status . test phaul crit-go
+
 build:
 	@$(GO) build -v
 
@@ -29,6 +30,9 @@ test: test/test test/piggie
 	test/test restore image
 	pkill -9 piggie || :
 
+crit-go: 
+	@cd crit-go; go build -v
+
 phaul:
 	@cd phaul; go build -v
 
@@ -40,7 +44,6 @@ phaul-test: test/phaul test/piggie
 	test/piggie
 	test/phaul `pidof piggie`
 	pkill -9 piggie || :
-
 clean:
 	@rm -f test/test test/piggie test/phaul
 	@rm -rf image

@@ -1,0 +1,26 @@
+# encodes the generated json from go
+diff  core-13772.img  core-13772-go.img
+diff  core-14350.img  core-14350-go.img 
+diff  core.img  core-go.img 
+diff  fd.img  fd-go.img 
+diff  fdinfo-2.img  fdinfo-2-go.img 
+diff  fdinfo-3.img  fdinfo-3-go.img 
+diff  files.img  files-go.img 
+diff  fs-13772.img  fs-13772-go.img 
+diff  ghost-file-2f.img  ghost-file-2f-go.img 
+diff  ids-13772.img  ids-13772-go.img 
+diff  ids-14350.img  ids-14350-go.img 
+diff  inventory.img  inventory-go.img 
+diff  ipcns-msg-11.img  ipcns-msg-11-go.img 
+diff  ipcns-shm-11.img  ipcns-shm-11-go.img 
+diff  ipcns-sem-11.img  ipcns-sem-11-go.img 
+diff  mm-13772.img  mm-13772-go.img 
+diff  mm-14350.img  mm-14350-go.img 
+diff  pagemap-13772.img  pagemap-13772-go.img 
+diff  pagemap-14350.img  pagemap-14350-go.img
+diff  pages-1.img  pages-1-go.img
+diff  pages-2.img  pages-2-go.img
+diff  pipes-data.img  pipes-data-go.img
+diff  pstree.img  pstree-go.img
+diff  sk-queues.img  sk-queues-go.img
+diff  tcp-stream-103886d.img  tcp-stream-103886d-go.img

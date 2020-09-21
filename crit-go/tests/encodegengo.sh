@@ -1,0 +1,25 @@
+# encodes the generated json from go
+go run main.go encode --in core-13772-go.json -o core-13772-go.img
+go run main.go encode --in core-14350-go.json -o core-14350-go.img 
+go run main.go encode --in core-go.json -o core-go.img 
+go run main.go encode --in fd-go.json -o fd-go.img 
+go run main.go encode --in fdinfo-2-go.json -o fdinfo-2-go.img 
+go run main.go encode --in fdinfo-3-go.json -o fdinfo-3-go.img 
+go run main.go encode --in files-go.json -o files-go.img 
+go run main.go encode --in fs-13772-go.json -o fs-13772-go.img 
+go run main.go encode --in ghost-file-2f-go.json -o ghost-file-2f-go.img 
+go run main.go encode --in ids-13772-go.json -o ids-13772-go.img 
+go run main.go encode --in ids-14350-go.json -o ids-14350-go.img 
+go run main.go encode --in ipcns-msg-11-go.json -o ipcns-msg-11-go.img 
+go run main.go encode --in ipcns-shm-11-go.json -o ipcns-shm-11-go.img 
+go run main.go encode --in ipcns-sem-11-go.json -o ipcns-sem-11-go.img 
+go run main.go encode --in mm-13772-go.json -o mm-13772-go.img 
+go run main.go encode --in mm-14350-go.json -o mm-14350-go.img 
+go run main.go encode --in pagemap-13772-go.json -o pagemap-13772-go.img 
+go run main.go encode --in pagemap-14350-go.json -o pagemap-14350-go.img
+go run main.go encode --in pages-1-go.json -o pages-1-go.img
+go run main.go encode --in pages-2-go.json -o pages-2-go.img
+go run main.go encode --in pipes-data-go.json -o pipes-data-go.img
+go run main.go encode --in pstree-go.json -o pstree-go.img
+go run main.go encode --in sk-queues-go.json -o sk-queues-go.img
+go run main.go encode --in tcp-stream-103886d-go.json -o tcp-stream-103886d-go.img
