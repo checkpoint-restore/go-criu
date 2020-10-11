@@ -1,13 +1,16 @@
 package phaul
 
 import (
+	"errors"
 	"fmt"
 	"os"
+
+	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v4"
 	"github.com/checkpoint-restore/go-criu/v4/rpc"
 	"github.com/golang/protobuf/proto"
-	"path/filepath"
+	"golang.org/x/sys/unix"
 )
 
 // Server struct
@@ -80,13 +83,16 @@ func (s *Server) StartIter() error {
 
 // StopIter function
 func (s *Server) StopIter() error {
+	if s.process == nil {
+		return errors.New("No process to stop")
+	}
 	state, err := s.process.Wait()
-	if err != nil {
-		return nil
+	if err != nil && !errors.Is(err, unix.ECHILD) {
+		return err
 	}
 
-	if !state.Success() {
-		return fmt.Errorf("page-server failed: %s", s)
+	if err == nil && !state.Success() {
+		return fmt.Errorf("page-server failed: %s", state)
 	}
 	return nil
 }
