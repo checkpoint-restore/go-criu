@@ -78,6 +78,11 @@ func (pc *Client) Migrate() error {
 	prevStats := &stats.DumpStatsEntry{}
 	iter := 0
 
+	pidfd, err := pidfdOpen(pc.cfg.Pid)
+	if err != nil {
+		fmt.Printf("pidfd_open failed: %v (skipping pidfd based pid reuse detection)\n", err)
+	}
+
 	for {
 		err = pc.remote.StartIter()
 		if err != nil {
@@ -93,6 +98,10 @@ func (pc *Client) Migrate() error {
 		opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
 		if prevP != "" {
 			opts.ParentImg = proto.String(prevP)
+		}
+
+		if pidfd != -1 && isPidClosed(pidfd) {
+			return fmt.Errorf("process (pid: %d) was closed", pc.cfg.Pid)
 		}
 
 		err = criu.PreDump(opts, nil)
@@ -120,6 +129,10 @@ func (pc *Client) Migrate() error {
 
 	err = pc.remote.StartIter()
 	if err == nil {
+		if pidfd != -1 && isPidClosed(pidfd) {
+			return fmt.Errorf("process (pid: %d) was closed", pc.cfg.Pid)
+		}
+
 		prevP := imgs.lastImagesDir()
 		err = pc.local.DumpCopyRestore(criu, pc.cfg, prevP)
 		err2 := pc.remote.StopIter()
