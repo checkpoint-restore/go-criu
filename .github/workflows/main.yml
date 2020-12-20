@@ -1,0 +1,38 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [1.13.x, 1.14.x, 1.15.x]
+        criu_branch: [master, criu-dev]
+
+    steps:
+
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: install deps
+      run: |
+        sudo apt-get install -y golint libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf libnl-3-dev libnet-dev libcap-dev
+        sudo make install.tools
+        git clone --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
+        make -C criu
+        sudo make -C criu install-criu PREFIX=/usr
+
+    - name: install go ${{ matrix.go-version }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Run tests
+      run: |
+        sudo make lint build phaul test/test test/phaul test/piggie
+        # Run actual test as root as it uses CRIU.
+        sudo make test phaul-test
+        # This builds crit-go
+        sudo make -C crit-go/magic-gen lint build magicgen test
