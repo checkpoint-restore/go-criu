@@ -1,4 +1,4 @@
-[![master](https://travis-ci.org/checkpoint-restore/go-criu.svg?branch=master)](https://travis-ci.org/checkpoint-restore/go-criu)
+[![master](https://github.com/checkpoint-restore/go-criu/workflows/ci/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions)
 
 ## go-criu -- Go bindings for [CRIU](https://criu.org/)
 
