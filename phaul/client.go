@@ -101,6 +101,8 @@ func (pc *Client) Migrate() error {
 			return err
 		}
 
+		iter++
+
 		err = pc.remote.StopIter()
 		if err != nil {
 			return err
