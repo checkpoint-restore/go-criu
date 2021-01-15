@@ -13,7 +13,7 @@ all: build test phaul phaul-test
 
 lint:
 	@golint -set_exit_status . test phaul crit-go
-
+	 
 build:
 	@$(GO) build -v
 

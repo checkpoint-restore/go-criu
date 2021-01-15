@@ -16,7 +16,6 @@ var xCmd = &cobra.Command{
 }
 
 func init() {
-	// rootCmd.AddCommand(xCmd)
 	xCmd.Flags().StringVarP(&dir, "dir", "", "", "location/or the image")
 	xCmd.MarkFlagRequired("dir")
 	xCmd.Flags().StringVarP(&what, "what", "", "", "choose between {ps,fss,mems,rss}")

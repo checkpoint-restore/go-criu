@@ -8,19 +8,28 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/checkpoint-restore/go-criu/rpc"
+	"github.com/checkpoint-restore/go-criu/v4/rpc"
 	"github.com/golang/protobuf/proto"
 )
 
 // Criu struct
 type Criu struct {
-	swrkCmd *exec.Cmd
-	swrkSk  *os.File
+	swrkCmd  *exec.Cmd
+	swrkSk   *os.File
+	swrkPath string
 }
 
 // MakeCriu returns the Criu object required for most operations
 func MakeCriu() *Criu {
-	return &Criu{}
+	return &Criu{
+		swrkPath: "criu",
+	}
+}
+
+// SetCriuPath allows setting the path to the CRIU binary
+// if it is in a non standard location
+func (c *Criu) SetCriuPath(path string) {
+	c.swrkPath = path
 }
 
 // Prepare sets up everything for the RPC communication to CRIU
@@ -36,7 +45,7 @@ func (c *Criu) Prepare() error {
 	defer srv.Close()
 
 	args := []string{"swrk", strconv.Itoa(fds[1])}
-	cmd := exec.Command("criu", args...)
+	cmd := exec.Command(c.swrkPath, args...)
 
 	err = cmd.Start()
 	if err != nil {
@@ -219,8 +228,8 @@ func (c *Criu) GetCriuVersion() (int, error) {
 		return 0, fmt.Errorf("Unexpected CRIU RPC response")
 	}
 
-	version := int(*resp.GetVersion().Major) * 10000
-	version += int(*resp.GetVersion().Minor) * 100
+	version := int(*resp.GetVersion().MajorNumber) * 10000
+	version += int(*resp.GetVersion().MinorNumber) * 100
 	if resp.GetVersion().Sublevel != nil {
 		version += int(*resp.GetVersion().Sublevel)
 	}
