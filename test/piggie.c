@@ -51,6 +51,10 @@ int main(int argc, char **argv)
 	stk = mmap(NULL, STKS, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE | MAP_ANON | MAP_GROWSDOWN, 0, 0);
 	pid = clone(do_test, stk + STKS, SIGCHLD | CLONE_NEWPID, argv[1]);
+	if (pid < 0) {
+		fprintf(stderr, "clone() failed: %m\n");
+		return 1;
+	}
 	printf("Child forked, pid %d\n", pid);
 
 	return 0;
