@@ -3,3 +3,4 @@ test/piggie
 test/phaul
 image
 rpc/rpc.proto
+stats/stats.proto
