@@ -52,9 +52,15 @@ install.tools:
 	fi
 
 rpc/rpc.proto:
-	curl -s https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@
+	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@
+
+stats/stats.proto:
+	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/stats.proto -o $@
 
 rpc/rpc.pb.go: rpc/rpc.proto
+	protoc --go_out=. $^
+
+stats/stats.pb.go: stats/stats.proto
 	protoc --go_out=. $^
 
 .PHONY: build test clean lint phaul
