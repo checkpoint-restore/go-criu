@@ -64,7 +64,7 @@ func (c *Criu) Cleanup() {
 	if c.swrkCmd != nil {
 		c.swrkSk.Close()
 		c.swrkSk = nil
-		c.swrkCmd.Wait()
+		_ = c.swrkCmd.Wait()
 		c.swrkCmd = nil
 	}
 }
