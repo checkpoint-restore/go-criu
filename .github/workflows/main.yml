@@ -16,10 +16,9 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
 
-    - name: install deps
+    - name: install criu
       run: |
-        sudo apt-get install -y golint libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf libnl-3-dev libnet-dev libcap-dev
-        sudo make install.tools
+        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf libnl-3-dev libnet-dev libcap-dev
         git clone --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
         make -C criu
         sudo make -C criu install-criu PREFIX=/usr
@@ -32,7 +31,6 @@ jobs:
 
     - name: Run tests
       run: |
-        sudo make lint build phaul test/test test/phaul test/piggie
         # Run actual test as root as it uses CRIU.
         sudo make test phaul-test
         # This builds crit-go

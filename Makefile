@@ -1,55 +1,46 @@
 GO ?= go
 CC ?= gcc
-ifeq ($(GOPATH),)
-export GOPATH := $(shell $(GO) env GOPATH)
-endif
-FIRST_GOPATH := $(firstword $(subst :, ,$(GOPATH)))
-GOBIN := $(shell $(GO) env GOBIN)
-ifeq ($(GOBIN),)
-	GOBIN := $(FIRST_GOPATH)/bin
-endif
 
-all: build test phaul phaul-test
+all: build test phaul-test
 
 lint:
-	@golint -set_exit_status . test phaul
+	golangci-lint run ./...
+
 build:
-	@$(GO) build -v
+	$(GO) build -v ./...
 
-test/piggie: test/piggie.c
-	@$(CC) $^ -o $@
+TEST_BINARIES := test/test test/piggie/piggie test/phaul/phaul
+test-bin: $(TEST_BINARIES)
 
-test/test: test/main.go
-	@$(GO) build -v -o test/test test/main.go
+test/piggie/piggie: test/piggie/piggie.c
+	$(CC) $^ -o $@
 
-test: test/test test/piggie
+test/test: test/*.go
+	$(GO) build -v -o $@ $^
+
+test: $(TEST_BINARIES)
 	mkdir -p image
-	test/piggie
-	test/test dump `pidof piggie` image
-	test/test restore image
-	pkill -9 piggie || :
-
-phaul:
-	@cd phaul; go build -v
-
-test/phaul: test/phaul-main.go
-	@$(GO) build -v -o test/phaul test/phaul-main.go
-
-phaul-test: test/phaul test/piggie
+	PID=$$(test/piggie/piggie) && { \
+	test/test dump $$PID image && \
+	test/test restore image; \
+	pkill -9 piggie; \
+	}
 	rm -rf image
-	test/piggie
-	test/phaul `pidof piggie`
-	pkill -9 piggie || :
+
+test/phaul/phaul: test/phaul/*.go
+	$(GO) build -v -o $@ $^
+
+phaul-test: $(TEST_BINARIES)
+	rm -rf image
+	PID=$$(test/piggie/piggie) && { \
+	test/phaul/phaul $$PID; \
+	pkill -9 piggie; \
+	}
 
 clean:
-	@rm -f test/test test/piggie test/phaul
+	@rm -f $(TEST_BINARIES)
 	@rm -rf image
-	@rm -f rpc/rpc.proto
-
-install.tools:
-	if [ ! -x "$(GOBIN)/golint" ]; then \
-		$(GO) get -u golang.org/x/lint/golint; \
-	fi
+	@rm -f rpc/rpc.proto stats/stats.proto
 
 rpc/rpc.proto:
 	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@
@@ -63,4 +54,4 @@ rpc/rpc.pb.go: rpc/rpc.proto
 stats/stats.pb.go: stats/stats.proto
 	protoc --go_out=. $^
 
-.PHONY: build test clean lint phaul
+.PHONY: build test phaul-test test-bin clean lint
