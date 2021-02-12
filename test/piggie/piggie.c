@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "clone() failed: %m\n");
 		return 1;
 	}
-	printf("Child forked, pid %d\n", pid);
+	printf("%d\n", pid);
 
 	return 0;
 }
