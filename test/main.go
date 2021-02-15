@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/checkpoint-restore/go-criu/v4"
-	"github.com/checkpoint-restore/go-criu/v4/rpc"
+	"github.com/checkpoint-restore/go-criu/v5"
+	"github.com/checkpoint-restore/go-criu/v5/rpc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -31,7 +31,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	}
 	defer img.Close()
 
-	opts := rpc.CriuOpts{
+	opts := &rpc.CriuOpts{
 		Pid:         proto.Int32(int32(pid)),
 		ImagesDirFd: proto.Int32(int32(img.Fd())),
 		LogLevel:    proto.Int32(4),
@@ -105,7 +105,7 @@ func main() {
 		}
 		defer img.Close()
 
-		opts := rpc.CriuOpts{
+		opts := &rpc.CriuOpts{
 			ImagesDirFd: proto.Int32(int32(img.Fd())),
 			LogLevel:    proto.Int32(4),
 			LogFile:     proto.String("restore.log"),

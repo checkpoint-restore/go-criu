@@ -7,8 +7,8 @@ import (
 
 	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v4"
-	"github.com/checkpoint-restore/go-criu/v4/rpc"
+	"github.com/checkpoint-restore/go-criu/v5"
+	"github.com/checkpoint-restore/go-criu/v5/rpc"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 )
@@ -42,7 +42,7 @@ func (s *Server) StartIter() error {
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(s.cfg.Memfd)),
 	}
-	opts := rpc.CriuOpts{
+	opts := &rpc.CriuOpts{
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("ps.log"),
 		Ps:       &psi,
