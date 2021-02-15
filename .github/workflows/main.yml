@@ -36,4 +36,4 @@ jobs:
         # Run actual test as root as it uses CRIU.
         sudo make test phaul-test
         # This builds crit-go
-        sudo make -C crit-go/magic-gen lint build magicgen test
+        sudo make -C crit-go/magic-gen build magicgen test
