@@ -3,9 +3,9 @@ package phaul
 import (
 	"fmt"
 
-	"github.com/checkpoint-restore/go-criu/v4"
-	"github.com/checkpoint-restore/go-criu/v4/rpc"
-	"github.com/checkpoint-restore/go-criu/v4/stats"
+	"github.com/checkpoint-restore/go-criu/v5"
+	"github.com/checkpoint-restore/go-criu/v5/rpc"
+	"github.com/checkpoint-restore/go-criu/v5/stats"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,7 +57,7 @@ func (pc *Client) Migrate() error {
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
 	}
-	opts := rpc.CriuOpts{
+	opts := &rpc.CriuOpts{
 		Pid:      proto.Int32(int32(pc.cfg.Pid)),
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("pre-dump.log"),

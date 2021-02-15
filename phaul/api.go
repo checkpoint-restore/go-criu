@@ -1,7 +1,7 @@
 package phaul
 
 import (
-	"github.com/checkpoint-restore/go-criu/v4"
+	"github.com/checkpoint-restore/go-criu/v5"
 )
 
 // Config is the configuration which is passed around
