@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strconv"
+
 	"github.com/checkpoint-restore/go-criu/v4"
 	"github.com/checkpoint-restore/go-criu/v4/rpc"
 	"github.com/golang/protobuf/proto"
-	"os"
-	"strconv"
 )
 
 // TestNfy struct
@@ -16,16 +18,16 @@ type TestNfy struct {
 
 // PreDump test function
 func (c TestNfy) PreDump() error {
-	fmt.Printf("TEST PRE DUMP\n")
+	log.Println("TEST PRE DUMP")
 	return nil
 }
 
 func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) error {
-	fmt.Printf("Dumping\n")
+	log.Println("Dumping")
 	pid, _ := strconv.Atoi(pidS)
 	img, err := os.Open(imgDir)
 	if err != nil {
-		return fmt.Errorf("can't open image dir (%s)", err)
+		return fmt.Errorf("can't open image dir: %v", err)
 	}
 	defer img.Close()
 
@@ -47,7 +49,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 		err = c.Dump(opts, TestNfy{})
 	}
 	if err != nil {
-		return fmt.Errorf("dump fail (%s)", err)
+		return fmt.Errorf("dump fail: %v", err)
 	}
 
 	return nil
@@ -62,24 +64,21 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println("CRIU version", version)
+	log.Println("CRIU version", version)
 	// Check if version at least 3.2
 	result, err := c.IsCriuAtLeast(30200)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 	if !result {
-		fmt.Println("CRIU too old")
-		os.Exit(1)
+		log.Fatalln("CRIU version to old")
 	}
 	act := os.Args[1]
 	switch act {
 	case "dump":
 		err := doDump(c, os.Args[2], os.Args[3], false, "")
 		if err != nil {
-			fmt.Print(err)
-			os.Exit(1)
+			log.Fatalln("dump failed:", err)
 		}
 	case "dump2":
 		err := c.Prepare()
@@ -90,24 +89,19 @@ func main() {
 
 		err = doDump(c, os.Args[2], os.Args[3]+"/pre", true, "")
 		if err != nil {
-			fmt.Printf("pre-dump failed")
-			fmt.Print(err)
-			os.Exit(1)
+			log.Fatalln("pre-dump failed:", err)
 		}
 		err = doDump(c, os.Args[2], os.Args[3], false, "./pre")
 		if err != nil {
-			fmt.Printf("dump failed")
-			fmt.Print(err)
-			os.Exit(1)
+			log.Fatalln("dump failed: ", err)
 		}
 
 		c.Cleanup()
 	case "restore":
-		fmt.Printf("Restoring\n")
+		log.Println("Restoring")
 		img, err := os.Open(os.Args[2])
 		if err != nil {
-			fmt.Printf("can't open image dir")
-			os.Exit(1)
+			log.Fatalln("can't open image dir:", err)
 		}
 		defer img.Close()
 
@@ -119,15 +113,11 @@ func main() {
 
 		err = c.Restore(opts, nil)
 		if err != nil {
-			fmt.Printf("Error:")
-			fmt.Print(err)
-			fmt.Printf("\n")
-			os.Exit(1)
+			log.Fatalln("restore failed:", err)
 		}
 	default:
-		fmt.Printf("unknown action\n")
-		os.Exit(1)
+		log.Fatalln("unknown action")
 	}
 
-	fmt.Printf("Success\n")
+	log.Println("Success")
 }
