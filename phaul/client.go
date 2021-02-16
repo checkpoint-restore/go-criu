@@ -6,7 +6,7 @@ import (
 	"github.com/checkpoint-restore/go-criu/v4"
 	"github.com/checkpoint-restore/go-criu/v4/rpc"
 	"github.com/checkpoint-restore/go-criu/v4/stats"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const minPagesWritten uint64 = 64

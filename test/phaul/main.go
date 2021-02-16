@@ -10,7 +10,7 @@ import (
 	"github.com/checkpoint-restore/go-criu/v4"
 	"github.com/checkpoint-restore/go-criu/v4/phaul"
 	"github.com/checkpoint-restore/go-criu/v4/rpc"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type testLocal struct {
