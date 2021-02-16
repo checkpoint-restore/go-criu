@@ -45,6 +45,7 @@ func (c *Criu) Prepare() error {
 	defer srv.Close()
 
 	args := []string{"swrk", strconv.Itoa(fds[1])}
+	// #nosec G204
 	cmd := exec.Command(c.swrkPath, args...)
 
 	err = cmd.Start()
