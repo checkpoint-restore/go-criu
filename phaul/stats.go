@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/checkpoint-restore/go-criu/v4/stats"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 /* FIXME: report stats from CriuResp */

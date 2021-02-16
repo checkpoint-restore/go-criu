@@ -9,8 +9,8 @@ import (
 
 	"github.com/checkpoint-restore/go-criu/v4"
 	"github.com/checkpoint-restore/go-criu/v4/rpc"
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/sys/unix"
+	"google.golang.org/protobuf/proto"
 )
 
 // Server struct
