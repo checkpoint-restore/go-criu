@@ -24,7 +24,10 @@ func (c TestNfy) PreDump() error {
 
 func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) error {
 	log.Println("Dumping")
-	pid, _ := strconv.Atoi(pidS)
+	pid, err := strconv.ParseInt(pidS, 10, 0)
+	if err != nil {
+		return fmt.Errorf("can't parse pid: %w", err)
+	}
 	img, err := os.Open(imgDir)
 	if err != nil {
 		return fmt.Errorf("can't open image dir: %v", err)
