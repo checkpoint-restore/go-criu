@@ -12,3 +12,13 @@ jobs:
         version: v1.36
         # Only show new issues for a pull request.
         only-new-issues: true
+
+  gomod:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: verify go.mod/go.sum
+      run: |
+        go mod tidy
+        (cd crit-go/magic-gen && go mod tidy)
+        git diff --exit-code
