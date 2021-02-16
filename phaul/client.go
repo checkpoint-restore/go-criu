@@ -9,9 +9,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const minPagesWritten uint64 = 64
-const maxIters int = 8
-const maxGrowDelta int64 = 32
+const (
+	minPagesWritten uint64 = 64
+	maxIters        int    = 8
+	maxGrowDelta    int64  = 32
+)
 
 // Client struct
 type Client struct {

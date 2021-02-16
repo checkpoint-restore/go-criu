@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
 	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v5"
