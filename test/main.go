@@ -30,7 +30,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	}
 	img, err := os.Open(imgDir)
 	if err != nil {
-		return fmt.Errorf("can't open image dir: %v", err)
+		return fmt.Errorf("can't open image dir: %w", err)
 	}
 	defer img.Close()
 
@@ -52,7 +52,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 		err = c.Dump(opts, TestNfy{})
 	}
 	if err != nil {
-		return fmt.Errorf("dump fail: %v", err)
+		return fmt.Errorf("dump fail: %w", err)
 	}
 
 	return nil
