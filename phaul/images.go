@@ -21,7 +21,7 @@ func (i *images) getPath(idx int) string {
 
 func (i *images) openNextDir() (*os.File, error) {
 	ipath := i.getPath(i.cursor)
-	err := os.Mkdir(ipath, 0700)
+	err := os.Mkdir(ipath, 0o700)
 	if err != nil {
 		return nil, err
 	}

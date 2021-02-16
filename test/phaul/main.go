@@ -26,25 +26,25 @@ type testRemote struct {
 const imagesDir = "image"
 
 func prepareImages() error {
-	err := os.Mkdir(imagesDir, 0700)
+	err := os.Mkdir(imagesDir, 0o700)
 	if err != nil {
 		return err
 	}
 
 	/* Work dir for PhaulClient */
-	err = os.Mkdir(imagesDir+"/local", 0700)
+	err = os.Mkdir(imagesDir+"/local", 0o700)
 	if err != nil {
 		return err
 	}
 
 	/* Work dir for PhaulServer */
-	err = os.Mkdir(imagesDir+"/remote", 0700)
+	err = os.Mkdir(imagesDir+"/remote", 0o700)
 	if err != nil {
 		return err
 	}
 
 	/* Work dir for DumpCopyRestore */
-	err = os.Mkdir(imagesDir+"/test", 0700)
+	err = os.Mkdir(imagesDir+"/test", 0o700)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,8 @@ func main() {
 	srv, err := phaul.MakePhaulServer(phaul.Config{
 		Pid:   pid,
 		Memfd: fds[1],
-		Wdir:  imagesDir + "/remote"})
+		Wdir:  imagesDir + "/remote",
+	})
 	if err != nil {
 		fmt.Printf("Unable to run a server: %v", err)
 		os.Exit(1)
@@ -175,7 +176,8 @@ func main() {
 		phaul.Config{
 			Pid:   pid,
 			Memfd: fds[0],
-			Wdir:  imagesDir + "/local"})
+			Wdir:  imagesDir + "/local",
+		})
 	if err != nil {
 		fmt.Printf("Unable to run a client: %v\n", err)
 		os.Exit(1)

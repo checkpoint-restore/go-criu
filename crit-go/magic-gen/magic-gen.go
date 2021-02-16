@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/thoas/go-funk"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/thoas/go-funk"
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	infile, err := os.Open(magiccheader)
 	check(err)
 	defer infile.Close()
-	outfile, err := os.OpenFile(magicjson, os.O_CREATE|os.O_WRONLY, 0644)
+	outfile, err := os.OpenFile(magicjson, os.O_CREATE|os.O_WRONLY, 0o644)
 	check(err)
 	defer outfile.Close()
 	enc := json.NewEncoder(outfile)
