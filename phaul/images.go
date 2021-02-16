@@ -11,6 +11,7 @@ type images struct {
 	dir    string
 }
 
+//nolint:unparam // suppress "error is always nil" warning
 func preparePhaulImages(wdir string) (*images, error) {
 	return &images{dir: wdir}, nil
 }
