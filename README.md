@@ -1,5 +1,6 @@
 [![test](https://github.com/checkpoint-restore/go-criu/workflows/ci/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Aci)
 [![verify](https://github.com/checkpoint-restore/go-criu/workflows/verify/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Averify)
+[![Go Reference](https://pkg.go.dev/badge/github.com/checkpoint-restore/go-criu.svg)](https://pkg.go.dev/github.com/checkpoint-restore/go-criu)
 
 ## go-criu -- Go bindings for CRIU
 
