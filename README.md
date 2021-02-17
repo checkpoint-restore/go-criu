@@ -45,7 +45,12 @@ As go-criu is imported in other projects and as Go modules are expected
 to follow Semantic Versioning go-criu will also follow Semantic Versioning
 starting with the 4.0.0 release.
 
-4.0.0 is based on CRIU 3.14
+The following table shows the relation between go-criu and criu versions:
+
+| Major version  | Latest release | CRIU version |
+| -------------- | -------------- | ------------ |
+| v5             | 5.0.0          | 3.15         |
+| v4             | 4.1.0          | 3.14         |
 
 ## How to contribute
 
