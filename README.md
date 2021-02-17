@@ -1,9 +1,9 @@
 [![test](https://github.com/checkpoint-restore/go-criu/workflows/ci/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Aci)
 [![verify](https://github.com/checkpoint-restore/go-criu/workflows/verify/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Averify)
 
-## go-criu -- Go bindings for [CRIU](https://criu.org/)
+## go-criu -- Go bindings for CRIU
 
-This repository provides Go bindings for CRIU. The code is based on the Go based PHaul
+This repository provides Go bindings for [CRIU](https://criu.org/). The code is based on the Go-based PHaul
 implementation from the CRIU repository. For easier inclusion into other Go projects the
 CRIU Go bindings have been moved to this repository.
 
@@ -11,13 +11,13 @@ The Go bindings provide an easy way to use the CRIU RPC calls from Go without th
 to set up all the infrastructure to make the actual RPC connection to CRIU.
 
 The following example would print the version of CRIU:
-```
+```go
 	c := criu.MakeCriu()
 	version, err := c.GetCriuVersion()
 	fmt.Println(version)
 ```
 or to just check if at least a certain CRIU version is installed:
-```
+```go
 	c := criu.MakeCriu()
 	result, err := c.IsCriuAtLeast(31100)
 ```
