@@ -12,11 +12,24 @@ to set up all the infrastructure to make the actual RPC connection to CRIU.
 
 The following example would print the version of CRIU:
 ```go
+import (
+	"log"
+
+	"github.com/checkpoint/restore/go-criu/v5"
+)
+
+func main() {
 	c := criu.MakeCriu()
 	version, err := c.GetCriuVersion()
-	fmt.Println(version)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(version)
+}
 ```
+
 or to just check if at least a certain CRIU version is installed:
+
 ```go
 	c := criu.MakeCriu()
 	result, err := c.IsCriuAtLeast(31100)
