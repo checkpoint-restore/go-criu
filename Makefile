@@ -54,4 +54,9 @@ rpc/rpc.pb.go: rpc/rpc.proto
 stats/stats.pb.go: stats/stats.proto
 	protoc --go_out=. $^
 
-.PHONY: build test phaul-test test-bin clean lint
+vendor:
+	GO111MODULE=on $(GO) mod tidy
+	GO111MODULE=on $(GO) mod vendor
+	GO111MODULE=on $(GO) mod verify
+
+.PHONY: build test phaul-test test-bin clean lint vendor
