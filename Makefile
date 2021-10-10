@@ -49,10 +49,10 @@ stats/stats.proto:
 	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/stats.proto -o $@
 
 rpc/rpc.pb.go: rpc/rpc.proto
-	protoc --go_out=. --go_opt=Mrpc/rpc.proto=rpc/ $^
+	protoc --go_out=. --go_opt=M$^=rpc/ $^
 
 stats/stats.pb.go: stats/stats.proto
-	protoc --go_out=. $^
+	protoc --go_out=. --go_opt=M$^=stats/ $^
 
 vendor:
 	GO111MODULE=on $(GO) mod tidy
