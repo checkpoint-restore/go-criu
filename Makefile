@@ -40,7 +40,6 @@ phaul-test: $(TEST_BINARIES)
 clean:
 	@rm -f $(TEST_BINARIES)
 	@rm -rf image
-	@rm -f rpc/rpc.proto stats/stats.proto
 
 rpc/rpc.proto:
 	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@

@@ -110,7 +110,7 @@ func (pc *Client) Migrate() error {
 			return err
 		}
 
-		st, err := criuGetDumpStats(imgDir)
+		st, err := stats.CriuGetDumpStats(imgDir)
 		if err != nil {
 			return err
 		}
