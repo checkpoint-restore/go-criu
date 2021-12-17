@@ -75,6 +75,8 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	test/phaul/phaul.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE $$PID; \
 	pkill -9 piggie; \
 	}
+	echo "mode: set" > .coverage/coverage.out && cat .coverage/coverprofile* | \
+		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> .coverage/coverage.out
 
 clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
@@ -100,6 +102,6 @@ vendor:
 codecov:
 	curl -Os https://uploader.codecov.io/latest/linux/codecov
 	chmod +x codecov
-	./codecov -f '.coverage/*'
+	./codecov -f '.coverage/coverage.out'
 
 .PHONY: build test phaul-test test-bin clean lint vendor coverage codecov
