@@ -58,6 +58,69 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	return nil
 }
 
+func featureCheck(c *criu.Criu) error {
+	features := &rpc.CriuFeatures{}
+	featuresToCompare := &rpc.CriuFeatures{}
+	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
+	if env != "" {
+		val, err := strconv.Atoi(env)
+		if err != nil {
+			return err
+		}
+		features.MemTrack = proto.Bool(val != 0)
+		featuresToCompare.MemTrack = proto.Bool(val != 0)
+	}
+	env = os.Getenv("CRIU_FEATURE_LAZY_PAGES")
+	if env != "" {
+		val, err := strconv.Atoi(env)
+		if err != nil {
+			return err
+		}
+		features.LazyPages = proto.Bool(val != 0)
+		featuresToCompare.LazyPages = proto.Bool(val != 0)
+	}
+	env = os.Getenv("CRIU_FEATURE_PIDFD_STORE")
+	if env != "" {
+		val, err := strconv.Atoi(env)
+		if err != nil {
+			return err
+		}
+		features.PidfdStore = proto.Bool(val != 0)
+		featuresToCompare.PidfdStore = proto.Bool(val != 0)
+	}
+
+	features, err := c.FeatureCheck(features)
+	if err != nil {
+		return err
+	}
+
+	if *features.MemTrack != *featuresToCompare.MemTrack {
+		return fmt.Errorf(
+			"Unexpected MemTrack FeatureCheck result %v:%v",
+			*features.MemTrack,
+			*featuresToCompare.MemTrack,
+		)
+	}
+
+	if *features.LazyPages != *featuresToCompare.LazyPages {
+		return fmt.Errorf(
+			"Unexpected LazyPages FeatureCheck result %v:%v",
+			*features.LazyPages,
+			*featuresToCompare.LazyPages,
+		)
+	}
+
+	if *features.PidfdStore != *featuresToCompare.PidfdStore {
+		return fmt.Errorf(
+			"Unexpected PidfdStore FeatureCheck result %v:%v",
+			*features.PidfdStore,
+			*featuresToCompare.PidfdStore,
+		)
+	}
+
+	return nil
+}
+
 // Usage: test $act $pid $images_dir
 func main() {
 	c := criu.MakeCriu()
@@ -76,6 +139,11 @@ func main() {
 	if !result {
 		log.Fatalln("CRIU version to old")
 	}
+
+	if err = featureCheck(c); err != nil {
+		log.Fatalln(err)
+	}
+
 	act := os.Args[1]
 	switch act {
 	case "dump":
