@@ -3,6 +3,64 @@ name: ci
 on: [push, pull_request]
 
 jobs:
+  fedora-rawhide:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:rawhide
+      options: --privileged
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: install criu
+      run: |
+        sudo dnf install -y \
+          diffutils \
+          findutils \
+          gcc \
+          git \
+          gnutls-devel \
+          gzip \
+          iproute \
+          iptables \
+          nftables \
+          nftables-devel \
+          libaio-devel \
+          libasan \
+          libcap-devel \
+          libnet-devel \
+          libnl3-devel \
+          make \
+          procps-ng \
+          protobuf-c-devel \
+          protobuf-devel \
+          python3-flake8 \
+          python3-PyYAML \
+          python3-future \
+          python3-protobuf \
+          python3-junit_xml \
+          python-unversioned-command \
+          redhat-rpm-config \
+          sudo \
+          tar \
+          which \
+          e2fsprogs \
+          rubygem-asciidoctor \
+          kmod \
+          golang
+        # FIXME: This fork contains the fixes from https://github.com/checkpoint-restore/criu/pull/1726
+        git clone --depth=1 --single-branch -b criu-dev https://github.com/rst0git/criu.git
+        make -j"$(nproc)" -C criu
+        sudo make -C criu install-criu PREFIX=/usr
+
+    - name: Run tests
+      run: |
+        # Run actual test as root as it uses CRIU.
+        sudo make test phaul-test
+        # This builds crit-go
+        sudo make -C crit-go/magic-gen build magicgen test
+
   test:
     runs-on: ubuntu-20.04
     strategy:
