@@ -48,6 +48,11 @@ func (c *Criu) Prepare() error {
 	// #nosec G204
 	cmd := exec.Command(c.swrkPath, args...)
 
+	// FIXME: Temporary solution for https://github.com/checkpoint-restore/criu/issues/1696
+	cmd.Env = append(os.Environ(),
+		"GLIBC_TUNABLES=glibc.pthread.rseq=0",
+	)
+
 	err = cmd.Start()
 	if err != nil {
 		cln.Close()
