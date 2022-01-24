@@ -19,8 +19,8 @@ jobs:
     - name: install criu
       run: |
         sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf libnl-3-dev libnet-dev libcap-dev
-        git clone --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
-        make -C criu
+        git clone --depth=1 --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
+        make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
     - name: install go ${{ matrix.go-version }}
