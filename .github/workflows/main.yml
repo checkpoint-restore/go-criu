@@ -33,8 +33,8 @@ jobs:
       run: |
         # Run actual test as root as it uses CRIU.
         sudo make test phaul-test
-        # This builds crit-go
-        sudo make -C crit-go/magic-gen build magicgen test
+        # Test magicgen script
+        make -C scripts test
 
     - name: Check code coverage
       if: matrix.go-version == '1.17.x' && matrix.criu_branch == 'criu-dev'

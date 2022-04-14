@@ -4,3 +4,7 @@ test/piggie/piggie
 test/phaul/phaul
 test/phaul/phaul.coverage
 image
+scripts/*.h
+scripts/expected.go
+scripts/output.go
+magic/magic.go
