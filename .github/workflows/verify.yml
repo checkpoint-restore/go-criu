@@ -20,5 +20,4 @@ jobs:
     - name: verify go.mod/go.sum
       run: |
         go mod tidy
-        (cd crit-go/magic-gen && go mod tidy)
         git diff --exit-code
