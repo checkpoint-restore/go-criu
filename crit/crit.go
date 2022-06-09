@@ -17,7 +17,6 @@ type crit struct {
 }
 
 type CritSvc interface {
-	Show() error
 	Encode() error
 	Decode() error
 	X() error
@@ -84,7 +83,26 @@ func (c *crit) Decode() error {
 	return nil
 }
 
-func (c *crit) Show() error   { return nil }
+func (c *crit) Info() error {
+	imgFile, err := os.Open(c.inputFilePath)
+	if err != nil {
+		return errors.New(fmt.Sprint("Error opening image file: ", err))
+	}
+	defer imgFile.Close()
+
+	// Convert binary image to Go struct
+	img, err := countImg(imgFile)
+	if err != nil {
+		return errors.New(fmt.Sprint("Error processing binary file: ", err))
+	}
+
+	jsonData, err := json.MarshalIndent(img, "", "    ")
+	if err != nil {
+		return errors.New(fmt.Sprint("Error processing data into JSON: ", err))
+	}
+	fmt.Println(string(jsonData))
+	return nil
+}
+
 func (c *crit) Encode() error { return nil }
 func (c *crit) X() error      { return nil }
-func (c *crit) Info() error   { return nil }

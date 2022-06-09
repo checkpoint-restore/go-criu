@@ -57,7 +57,7 @@ var showCmd = &cobra.Command{
 		inputFilePath = args[0]
 		pretty = true
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		if err := c.Show(); err != nil {
+		if err := c.Decode(); err != nil {
 			log.Fatal(err)
 		}
 	},
