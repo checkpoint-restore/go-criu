@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/checkpoint-restore/go-criu/v5/crit"
 	"github.com/spf13/cobra"
@@ -30,8 +34,34 @@ var decodeCmd = &cobra.Command{
 If no output file is provided, the JSON is printed to stdout.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		if err := c.Decode(); err != nil {
+		img, err := c.Decode()
+		if err != nil {
 			log.Fatal(err)
+		}
+
+		var jsonData []byte
+		if pretty {
+			jsonData, err = json.MarshalIndent(img, "", "    ")
+		} else {
+			jsonData, err = json.Marshal(img)
+		}
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+		}
+		// If no output file, print to stdout
+		if outputFilePath == "" {
+			fmt.Println(string(jsonData))
+			return
+		}
+		// Write to output file
+		jsonFile, err := os.Create(outputFilePath)
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error opening destination file: ", err)))
+		}
+		defer jsonFile.Close()
+		_, err = jsonFile.Write(jsonData)
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error writing JSON data: ", err)))
 		}
 	},
 }
@@ -42,7 +72,8 @@ var encodeCmd = &cobra.Command{
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		if err := c.Encode(); err != nil {
+		_, err := c.Encode()
+		if err != nil {
 			log.Fatal(err)
 		}
 	},
@@ -57,9 +88,16 @@ var showCmd = &cobra.Command{
 		inputFilePath = args[0]
 		pretty = true
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		if err := c.Decode(); err != nil {
+		img, err := c.Decode()
+		if err != nil {
 			log.Fatal(err)
 		}
+
+		jsonData, err := json.MarshalIndent(img, "", "    ")
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+		}
+		fmt.Println(string(jsonData))
 	},
 }
 
@@ -71,9 +109,16 @@ var infoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		if err := c.Info(); err != nil {
+		img, err := c.Info()
+		if err != nil {
 			log.Fatal(err)
 		}
+
+		jsonData, err := json.MarshalIndent(img, "", "    ")
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+		}
+		fmt.Println(string(jsonData))
 	},
 }
 

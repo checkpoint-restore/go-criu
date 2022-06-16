@@ -1,7 +1,6 @@
 package crit
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -17,15 +16,10 @@ type crit struct {
 }
 
 type CritSvc interface {
-	Encode() error
-	Decode() error
+	Decode() (*CriuImage, error)
+	Encode() (*CriuImage, error)
+	Info() (*CriuImage, error)
 	X() error
-	Info() error
-}
-
-type criuImage struct {
-	Magic   string            `json:"magic"`
-	Entries []json.RawMessage `json:"entries"`
 }
 
 func New(
@@ -43,66 +37,25 @@ func New(
 	}
 }
 
-func (c *crit) Decode() error {
+func (c *crit) Decode() (*CriuImage, error) {
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
-		return errors.New(fmt.Sprint("Error opening image file: ", err))
+		return nil, errors.New(fmt.Sprint("Error opening image file: ", err))
 	}
 	defer imgFile.Close()
-
 	// Convert binary image to Go struct
-	img, err := loadImg(imgFile, c.noPayload)
-	if err != nil {
-		return errors.New(fmt.Sprint("Error processing binary file: ", err))
-	}
-
-	var jsonData []byte
-	if c.pretty {
-		jsonData, err = json.MarshalIndent(img, "", "    ")
-	} else {
-		jsonData, err = json.Marshal(img)
-	}
-	if err != nil {
-		return errors.New(fmt.Sprint("Error processing data into JSON: ", err))
-	}
-	// If no output file, print to stdout
-	if c.outputFilePath == "" {
-		fmt.Println(string(jsonData))
-		return nil
-	}
-	// Write to output file
-	jsonFile, err := os.Create(c.outputFilePath)
-	if err != nil {
-		return errors.New(fmt.Sprint("Error opening destination file: ", err))
-	}
-	defer jsonFile.Close()
-	_, err = jsonFile.Write(jsonData)
-	if err != nil {
-		return errors.New(fmt.Sprint("Error writing JSON data: ", err))
-	}
-	return nil
+	return decodeImg(imgFile, c.noPayload)
 }
 
-func (c *crit) Info() error {
+func (c *crit) Info() (*CriuImage, error) {
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
-		return errors.New(fmt.Sprint("Error opening image file: ", err))
+		return nil, errors.New(fmt.Sprint("Error opening image file: ", err))
 	}
 	defer imgFile.Close()
-
 	// Convert binary image to Go struct
-	img, err := countImg(imgFile)
-	if err != nil {
-		return errors.New(fmt.Sprint("Error processing binary file: ", err))
-	}
-
-	jsonData, err := json.MarshalIndent(img, "", "    ")
-	if err != nil {
-		return errors.New(fmt.Sprint("Error processing data into JSON: ", err))
-	}
-	fmt.Println(string(jsonData))
-	return nil
+	return countImg(imgFile)
 }
 
-func (c *crit) Encode() error { return nil }
-func (c *crit) X() error      { return nil }
+func (c *crit) Encode() (*CriuImage, error) { return nil, nil }
+func (c *crit) X() error                    { return nil }

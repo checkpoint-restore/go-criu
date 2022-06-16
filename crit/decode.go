@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v5/crit/images"
 	"github.com/checkpoint-restore/go-criu/v5/magic"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-func loadImg(f *os.File, noPayload bool) (*criuImage, error) {
+func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	magicMap := magic.LoadMagic()
-	img := criuImage{}
+	img := CriuImage{}
 
 	// Read magic
 	buf := make([]byte, 4)
@@ -43,28 +43,28 @@ func loadImg(f *os.File, noPayload bool) (*criuImage, error) {
 	switch img.Magic {
 	// Special handlers
 	case "PAGEMAP":
-		err = img.loadPagemap(f)
+		err = img.decodePagemap(f)
 	case "GHOST_FILE":
-		err = img.loadGhostFile(f, noPayload)
+		err = img.decodeGhostFile(f, noPayload)
 	// Default handler with func for extra data
 	case "PIPES_DATA":
-		err = img.loadDefault(f, loadPipesData, noPayload)
+		err = img.decodeDefault(f, decodePipesData, noPayload)
 	case "FIFO_DATA":
-		err = img.loadDefault(f, loadPipesData, noPayload)
+		err = img.decodeDefault(f, decodePipesData, noPayload)
 	case "SK_QUEUES":
-		err = img.loadDefault(f, loadSkQueues, noPayload)
+		err = img.decodeDefault(f, decodeSkQueues, noPayload)
 	case "TCP_STREAM":
-		err = img.loadDefault(f, loadTcpStream, noPayload)
+		err = img.decodeDefault(f, decodeTcpStream, noPayload)
 	case "BPFMAP_DATA":
-		err = img.loadDefault(f, loadBpfmapData, noPayload)
+		err = img.decodeDefault(f, decodeBpfmapData, noPayload)
 	case "IPCNS_SEM":
-		err = img.loadDefault(f, loadIpcSem, noPayload)
+		err = img.decodeDefault(f, decodeIpcSem, noPayload)
 	case "IPCNS_SHM":
-		err = img.loadDefault(f, loadIpcShm, noPayload)
+		err = img.decodeDefault(f, decodeIpcShm, noPayload)
 	case "IPCNS_MSG":
-		err = img.loadDefault(f, loadIpcMsg, noPayload)
+		err = img.decodeDefault(f, decodeIpcMsg, noPayload)
 	default:
-		err = img.loadDefault(f, nil, noPayload)
+		err = img.decodeDefault(f, nil, noPayload)
 	}
 	if err != nil {
 		return nil, err
@@ -73,9 +73,9 @@ func loadImg(f *os.File, noPayload bool) (*criuImage, error) {
 	return &img, nil
 }
 
-func (img *criuImage) loadDefault(
+func (img *CriuImage) decodeDefault(
 	f *os.File,
-	loadExtra func(*os.File, proto.Message, bool) (string, error),
+	decodeExtra func(*os.File, proto.Message, bool) (string, error),
 	noPayload bool,
 ) error {
 	sizeBuf := make([]byte, 4)
@@ -101,29 +101,20 @@ func (img *criuImage) loadDefault(
 		if err := proto.Unmarshal(payloadBuf, payload); err != nil {
 			return err
 		}
-		jsonPayload, err := protojson.Marshal(payload)
-		if err != nil {
-			return err
-		}
-		if loadExtra != nil {
-			extraPayload, err := loadExtra(f, payload, noPayload)
+		entry := CriuEntry{Message: payload}
+		if decodeExtra != nil {
+			extraPayload, err := decodeExtra(f, payload, noPayload)
 			if err != nil {
 				return err
 			}
-			jsonString := string(jsonPayload)
-			jsonString = fmt.Sprint(
-				jsonString[:len(jsonString)-1],
-				`, "extra":"`,
-				extraPayload,
-				`"}`)
-			jsonPayload = []byte(jsonString)
+			entry.Extra = extraPayload
 		}
-		img.Entries = append(img.Entries, jsonPayload)
+		img.Entries = append(img.Entries, &entry)
 	}
 	return nil
 }
 
-func (img *criuImage) loadPagemap(f *os.File) error {
+func (img *CriuImage) decodePagemap(f *os.File) error {
 	var head bool = true
 	sizeBuf := make([]byte, 4)
 	// Read payload size and payload until EOF
@@ -153,16 +144,13 @@ func (img *criuImage) loadPagemap(f *os.File) error {
 		if err := proto.Unmarshal(payloadBuf, payload); err != nil {
 			return err
 		}
-		jsonPayload, err := protojson.Marshal(payload)
-		if err != nil {
-			return err
-		}
-		img.Entries = append(img.Entries, jsonPayload)
+		entry := CriuEntry{Message: payload}
+		img.Entries = append(img.Entries, &entry)
 	}
 	return nil
 }
 
-func (img *criuImage) loadGhostFile(f *os.File, noPayload bool) error {
+func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 	sizeBuf := make([]byte, 4)
 	if _, err := f.Read(sizeBuf); err != nil {
 		return err
@@ -177,13 +165,10 @@ func (img *criuImage) loadGhostFile(f *os.File, noPayload bool) error {
 	if err := proto.Unmarshal(payloadBuf, payload); err != nil {
 		return err
 	}
-	jsonPayload, err := protojson.Marshal(payload)
-	if err != nil {
-		return err
-	}
+	entry := CriuEntry{Message: payload}
 
 	if payload.GetChunks() {
-		img.Entries = append(img.Entries, jsonPayload)
+		img.Entries = append(img.Entries, &entry)
 		for {
 			n, err := f.Read(sizeBuf)
 			if n == 0 {
@@ -202,10 +187,7 @@ func (img *criuImage) loadGhostFile(f *os.File, noPayload bool) error {
 			if err := proto.Unmarshal(payloadBuf, payload); err != nil {
 				return err
 			}
-			jsonPayload, err = protojson.Marshal(payload)
-			if err != nil {
-				return err
-			}
+			entry = CriuEntry{Message: payload}
 			if noPayload {
 				if _, err = f.Seek(int64(payload.GetLen()), 1); err != nil {
 					return err
@@ -215,21 +197,13 @@ func (img *criuImage) loadGhostFile(f *os.File, noPayload bool) error {
 				if _, err := f.Read(extraBuf); err != nil {
 					return err
 				}
-				// Truncate the last '}' in the existing JSON
-				// and append the extra payload into the string
-				jsonString := string(jsonPayload)
-				jsonString = fmt.Sprint(
-					jsonString[:len(jsonString)-1],
-					`, "extra":"`,
-					base64.StdEncoding.EncodeToString(extraBuf),
-					`"}`)
-				jsonPayload = []byte(jsonString)
+				entry.Extra = base64.StdEncoding.EncodeToString(extraBuf)
 			}
-			img.Entries = append(img.Entries, jsonPayload)
+			img.Entries = append(img.Entries, &entry)
 		}
 	} else {
 		if noPayload {
-			if _, err = f.Seek(0, 2); err != nil {
+			if _, err := f.Seek(0, 2); err != nil {
 				return err
 			}
 		} else {
@@ -241,25 +215,17 @@ func (img *criuImage) loadGhostFile(f *os.File, noPayload bool) error {
 			if _, err := f.Read(extraBuf); err != nil {
 				return err
 			}
-			// Truncate the last '}' in the existing JSON
-			// and append the extra payload into the string
-			jsonString := string(jsonPayload)
-			jsonString = fmt.Sprint(
-				jsonString[:len(jsonString)-1],
-				`, "extra":"`,
-				base64.StdEncoding.EncodeToString(extraBuf),
-				`"}`)
-			jsonPayload = []byte(jsonString)
+			entry.Extra = base64.StdEncoding.EncodeToString(extraBuf)
 		}
-		img.Entries = append(img.Entries, jsonPayload)
+		img.Entries = append(img.Entries, &entry)
 	}
 	return nil
 }
 
 // Function to count number of top-level entries
-func countImg(f *os.File) (*criuImage, error) {
+func countImg(f *os.File) (*CriuImage, error) {
 	magicMap := magic.LoadMagic()
-	img := criuImage{}
+	img := CriuImage{}
 
 	// Read magic
 	buf := make([]byte, 4)
@@ -304,7 +270,7 @@ func countImg(f *os.File) (*criuImage, error) {
 		count--
 	}
 
-	jsonString := fmt.Sprintf(`{"count":%d}`, count)
-	img.Entries = append(img.Entries, []byte(jsonString))
+	entry := CriuEntry{Extra: strconv.Itoa(count)}
+	img.Entries = append(img.Entries, &entry)
 	return &img, nil
 }

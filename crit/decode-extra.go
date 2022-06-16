@@ -28,7 +28,7 @@ func countBytes(n int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
-func loadPipesData(
+func decodePipesData(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -50,7 +50,7 @@ func loadPipesData(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
-func loadSkQueues(
+func decodeSkQueues(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -72,7 +72,7 @@ func loadSkQueues(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
-func loadTcpStream(
+func decodeTcpStream(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -106,7 +106,7 @@ func loadTcpStream(
 	return string(extraJson), err
 }
 
-func loadBpfmapData(
+func decodeBpfmapData(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -128,7 +128,7 @@ func loadBpfmapData(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
-func loadIpcSem(
+func decodeIpcSem(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -160,7 +160,7 @@ func loadIpcSem(
 	return string(extraJson), err
 }
 
-func loadIpcShm(
+func decodeIpcShm(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -185,7 +185,7 @@ func loadIpcShm(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
-func loadIpcMsg(
+func decodeIpcMsg(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
