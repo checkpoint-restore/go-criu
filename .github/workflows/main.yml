@@ -32,7 +32,7 @@ jobs:
     - name: Run tests
       run: |
         # Run actual test as root as it uses CRIU.
-        sudo make test phaul-test
+        sudo make test
         # Test magicgen script
         make -C scripts test
 
