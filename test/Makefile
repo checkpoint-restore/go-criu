@@ -71,7 +71,7 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> .coverage/coverage.out
 
 codecov:
-	curl -Os https://uploader.codecov.io/lalinux/codecov
+	curl -Os https://uploader.codecov.io/latest/linux/codecov
 	chmod +x codecov
 	./codecov -f '.coverage/coverage.out'
 
