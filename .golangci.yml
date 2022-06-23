@@ -1,5 +1,5 @@
 run:
-  skip_dirs:
+  skip-dirs:
     - rpc
     - stats
 
