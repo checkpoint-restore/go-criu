@@ -27,9 +27,8 @@ jobs:
         sudo make -C criu install-criu PREFIX=/usr
 
     - name: install go ${{ matrix.go-version }}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
-        stable: '!contains(${{ matrix.go-version }}, "beta") && !contains(${{ matrix.go-version }}, "rc")'
         go-version: ${{ matrix.go-version }}
 
     - name: Run tests
