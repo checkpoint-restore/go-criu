@@ -11,7 +11,6 @@ export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE
 TEST_PAYLOAD := piggie/piggie
 TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul
 COVERAGE_BINARIES := test.coverage phaul/phaul.coverage
-test-bin: $(TEST_BINARIES)
 
 all: $(TEST_BINARIES) phaul-test
 	mkdir -p image
@@ -79,4 +78,4 @@ clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
 	@rm -rf image $(COVERAGE_PATH)
 
-.PHONY: all clean coverage codecov phaul-test test-bin
+.PHONY: all clean coverage codecov phaul-test
