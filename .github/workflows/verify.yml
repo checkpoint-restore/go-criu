@@ -5,18 +5,17 @@ jobs:
   lint:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
-    - uses: golangci/golangci-lint-action@v2
+    - uses: actions/checkout@v3
+    - uses: golangci/golangci-lint-action@v3
       with:
-        # must be specified without patch version
-        version: v1.46
+        version: latest
         # Only show new issues for a pull request.
         only-new-issues: true
 
   gomod:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: verify go.mod/go.sum
       run: |
         go mod tidy
