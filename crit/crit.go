@@ -47,7 +47,8 @@ func New(
 func (c *crit) Decode() (*CriuImage, error) {
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("Error opening image file: ", err))
+		return nil,
+			errors.New(fmt.Sprint("Error opening image file: ", err))
 	}
 	defer imgFile.Close()
 	// Convert binary image to Go struct
@@ -57,7 +58,8 @@ func (c *crit) Decode() (*CriuImage, error) {
 func (c *crit) Info() (*CriuImage, error) {
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("Error opening image file: ", err))
+		return nil,
+			errors.New(fmt.Sprint("Error opening image file: ", err))
 	}
 	defer imgFile.Close()
 	// Convert binary image to Go struct
