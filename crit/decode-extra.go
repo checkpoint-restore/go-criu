@@ -72,6 +72,11 @@ func decodeSkQueues(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
+type tcpStreamExtra struct {
+	InQ  string `json:"inQ"`
+	OutQ string `json:"outQ"`
+}
+
 func decodeTcpStream(
 	f *os.File,
 	payload proto.Message,
@@ -81,27 +86,26 @@ func decodeTcpStream(
 	if !ok {
 		return "", errors.New("Unable to assert payload type")
 	}
-	inqLen := p.GetInqLen()
-	outqLen := p.GetOutqLen()
+	inQLen := p.GetInqLen()
+	outQLen := p.GetOutqLen()
 
 	if noPayload {
 		f.Seek(0, 2)
-		return countBytes(int64(inqLen + outqLen)), nil
+		return countBytes(int64(inQLen + outQLen)), nil
 	}
-	extra := struct {
-		InQ  string `json:"inQ"`
-		OutQ string `json:"outQ"`
-	}{}
-	extraBuf := make([]byte, inqLen)
+
+	extra := tcpStreamExtra{}
+	extraBuf := make([]byte, inQLen)
 	if _, err := f.Read(extraBuf); err != nil {
 		return "", err
 	}
 	extra.InQ = base64.StdEncoding.EncodeToString(extraBuf)
-	extraBuf = make([]byte, outqLen)
+	extraBuf = make([]byte, outQLen)
 	if _, err := f.Read(extraBuf); err != nil {
 		return "", err
 	}
 	extra.OutQ = base64.StdEncoding.EncodeToString(extraBuf)
+
 	extraJson, err := json.Marshal(extra)
 	return string(extraJson), err
 }
@@ -195,21 +199,21 @@ func decodeIpcMsg(
 		return "", errors.New("Unable to assert payload type")
 	}
 	msgQNum := int64(p.GetQnum())
-	extraBuf := make([]byte, 4)
+	sizeBuf := make([]byte, 4)
 	// Store payload size if noPayload is true
 	var totalSize int64 = 0
 	// Store messages as string slice
 	extraPayload := []string{}
 
 	for i := 0; i < int(msgQNum); i++ {
-		n, err := f.Read(extraBuf)
+		n, err := f.Read(sizeBuf)
 		if n == 0 {
 			if err == io.EOF {
 				break
 			}
 			return "", err
 		}
-		extraSize := uint64(binary.LittleEndian.Uint32(extraBuf))
+		extraSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
 		msgBuf := make([]byte, extraSize)
 		if _, err = f.Read(msgBuf); err != nil {
 			return "", err
@@ -236,9 +240,9 @@ func decodeIpcMsg(
 			if _, err = f.Read(msgDataBuf); err != nil {
 				return "", err
 			}
-			f.Seek(roundedMsgSize-msgSize, 1)
 			msgData := base64.StdEncoding.EncodeToString(msgDataBuf)
 			extraPayload = append(extraPayload, msgData)
+			f.Seek(roundedMsgSize-msgSize, 1)
 		}
 	}
 

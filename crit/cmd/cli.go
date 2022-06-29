@@ -72,8 +72,13 @@ var encodeCmd = &cobra.Command{
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.New(inputFilePath, outputFilePath, inputDirPath, exploreType, pretty, noPayload)
-		_, err := c.Encode()
+		// Convert JSON to Go struct
+		img, err := c.Parse()
 		if err != nil {
+			log.Fatal(err)
+		}
+		// Write Go struct to binary file
+		if err := c.Encode(img); err != nil {
 			log.Fatal(err)
 		}
 	},

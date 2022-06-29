@@ -17,19 +17,20 @@ import (
 func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	magicMap := magic.LoadMagic()
 	img := CriuImage{}
+	var err error
 
 	// Read magic
-	buf := make([]byte, 4)
-	if _, err := f.Read(buf); err != nil {
+	magicBuf := make([]byte, 4)
+	if _, err := f.Read(magicBuf); err != nil {
 		return nil, err
 	}
-	magic := uint64(binary.LittleEndian.Uint32(buf))
+	magic := uint64(binary.LittleEndian.Uint32(magicBuf))
 	if magic == magicMap.ByName["IMG_COMMON"] ||
 		magic == magicMap.ByName["IMG_SERVICE"] {
-		if _, err := f.Read(buf); err != nil {
+		if _, err := f.Read(magicBuf); err != nil {
 			return nil, err
 		}
-		magic = uint64(binary.LittleEndian.Uint32(buf))
+		magic = uint64(binary.LittleEndian.Uint32(magicBuf))
 	}
 
 	// Identify magic
@@ -39,7 +40,6 @@ func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	}
 
 	// Call handler for entries
-	var err error
 	switch img.Magic {
 	// Special handlers
 	case "PAGEMAP":
@@ -115,8 +115,9 @@ func (img *CriuImage) decodeDefault(
 }
 
 func (img *CriuImage) decodePagemap(f *os.File) error {
-	var head bool = true
 	sizeBuf := make([]byte, 4)
+	// First entry is pagemap head
+	var payload proto.Message = &images.PagemapHead{}
 	// Read payload size and payload until EOF
 	for {
 		n, err := f.Read(sizeBuf)
@@ -125,15 +126,6 @@ func (img *CriuImage) decodePagemap(f *os.File) error {
 				break
 			}
 			return err
-		}
-		// Create proto struct as pagemapHead for first entry
-		// and as pagemapEntry for remaining
-		var payload proto.Message
-		if head {
-			payload = &images.PagemapHead{}
-			head = false
-		} else {
-			payload = &images.PagemapEntry{}
 		}
 
 		payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
@@ -146,6 +138,8 @@ func (img *CriuImage) decodePagemap(f *os.File) error {
 		}
 		entry := CriuEntry{Message: payload}
 		img.Entries = append(img.Entries, &entry)
+		// Create struct for next entry
+		payload = &images.PagemapEntry{}
 	}
 	return nil
 }

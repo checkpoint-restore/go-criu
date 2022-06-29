@@ -1,6 +1,7 @@
 package crit
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -16,9 +17,15 @@ type crit struct {
 }
 
 type CritSvc interface {
+	// Read binary file into Go struct
 	Decode() (*CriuImage, error)
-	Encode() (*CriuImage, error)
+	// Read only counts of binary file entries into Go struct
 	Info() (*CriuImage, error)
+	// Read JSON into Go struct
+	Parse() (*CriuImage, error)
+	// Write JSON to binary file
+	Encode(*CriuImage) error
+	// Explore process information
 	X() error
 }
 
@@ -57,5 +64,28 @@ func (c *crit) Info() (*CriuImage, error) {
 	return countImg(imgFile)
 }
 
-func (c *crit) Encode() (*CriuImage, error) { return nil, nil }
-func (c *crit) X() error                    { return nil }
+func (c *crit) Parse() (*CriuImage, error) {
+	jsonData, err := os.ReadFile(c.inputFilePath)
+	if err != nil {
+		return nil, errors.New(fmt.Sprint("Error opening JSON file: ", err))
+	}
+
+	img := CriuImage{}
+	if err = json.Unmarshal(jsonData, &img); err != nil {
+		return nil, errors.New(fmt.Sprint("Error processing JSON: ", err))
+	}
+
+	return &img, nil
+}
+
+func (c *crit) Encode(img *CriuImage) error {
+	imgFile, err := os.Create(c.outputFilePath)
+	if err != nil {
+		return errors.New(fmt.Sprint("Error opening destination file: ", err))
+	}
+	defer imgFile.Close()
+	// Convert JSON to Go struct
+	return encodeImg(img, imgFile)
+}
+
+func (c *crit) X() error { return nil }
