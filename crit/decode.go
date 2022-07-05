@@ -3,43 +3,22 @@ package crit
 import (
 	"encoding/base64"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 	"os"
-	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v5/crit/images"
-	"github.com/checkpoint-restore/go-criu/v5/magic"
 	"google.golang.org/protobuf/proto"
 )
 
 func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
-	magicMap := magic.LoadMagic()
 	img := CriuImage{}
 	var err error
 
-	// Read magic
-	magicBuf := make([]byte, 4)
-	if _, err := f.Read(magicBuf); err != nil {
+	// Identify magic
+	if img.Magic, err = readMagic(f); err != nil {
 		return nil, err
 	}
-	magic := uint64(binary.LittleEndian.Uint32(magicBuf))
-	if magic == magicMap.ByName["IMG_COMMON"] ||
-		magic == magicMap.ByName["IMG_SERVICE"] {
-		if _, err := f.Read(magicBuf); err != nil {
-			return nil, err
-		}
-		magic = uint64(binary.LittleEndian.Uint32(magicBuf))
-	}
 
-	// Identify magic
-	img.Magic = magicMap.ByValue[magic]
-	if img.Magic == "" {
-		return nil, errors.New(fmt.Sprintf("Unknown magic 0x%x", magic))
-	}
-
-	// Call handler for entries
 	switch img.Magic {
 	// Special handlers
 	case "PAGEMAP":
@@ -81,9 +60,8 @@ func (img *CriuImage) decodeDefault(
 	sizeBuf := make([]byte, 4)
 	// Read payload size and payload until EOF
 	for {
-		n, err := f.Read(sizeBuf)
-		if n == 0 {
-			if err == io.EOF {
+		if n, err := f.Read(sizeBuf); err != nil {
+			if n == 0 && err == io.EOF {
 				break
 			}
 			return err
@@ -120,9 +98,8 @@ func (img *CriuImage) decodePagemap(f *os.File) error {
 	var payload proto.Message = &images.PagemapHead{}
 	// Read payload size and payload until EOF
 	for {
-		n, err := f.Read(sizeBuf)
-		if n == 0 {
-			if err == io.EOF {
+		if n, err := f.Read(sizeBuf); err != nil {
+			if n == 0 && err == io.EOF {
 				break
 			}
 			return err
@@ -197,6 +174,7 @@ func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 		}
 	} else {
 		if noPayload {
+			// Seek to the end of the file
 			if _, err := f.Seek(0, 2); err != nil {
 				return err
 			}
@@ -214,57 +192,4 @@ func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 		img.Entries = append(img.Entries, &entry)
 	}
 	return nil
-}
-
-// Function to count number of top-level entries
-func countImg(f *os.File) (*CriuImage, error) {
-	magicMap := magic.LoadMagic()
-	img := CriuImage{}
-
-	// Read magic
-	buf := make([]byte, 4)
-	if _, err := f.Read(buf); err != nil {
-		return nil, err
-	}
-	magic := uint64(binary.LittleEndian.Uint32(buf))
-	if magic == magicMap.ByName["IMG_COMMON"] ||
-		magic == magicMap.ByName["IMG_SERVICE"] {
-		if _, err := f.Read(buf); err != nil {
-			return nil, err
-		}
-		magic = uint64(binary.LittleEndian.Uint32(buf))
-	}
-
-	// Identify magic
-	img.Magic = magicMap.ByValue[magic]
-	if img.Magic == "" {
-		return nil, errors.New(fmt.Sprintf("Unknown magic 0x%x", magic))
-	}
-
-	count := 0
-	sizeBuf := make([]byte, 4)
-	// Read payload size and increment counter until EOF
-	for {
-		n, err := f.Read(sizeBuf)
-		if n == 0 {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		payloadSize := int64(binary.LittleEndian.Uint32(sizeBuf))
-		if _, err = f.Seek(payloadSize, 1); err != nil {
-			return nil, err
-		}
-		count++
-	}
-	// Decrement counter by 1 for pagemap file,
-	// as pagemap head is not a top-level entry
-	if img.Magic == "PAGEMAP" {
-		count--
-	}
-
-	entry := CriuEntry{Extra: strconv.Itoa(count)}
-	img.Entries = append(img.Entries, &entry)
-	return &img, nil
 }

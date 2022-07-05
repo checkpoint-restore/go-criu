@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 
@@ -13,20 +12,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
-
-// Helper to convert bytes into a more readable unit
-func countBytes(n int64) string {
-	const UNIT int64 = 1024
-	if n < UNIT {
-		return fmt.Sprint(n, " B")
-	}
-	div, exp := UNIT, 0
-	for i := n / UNIT; i >= UNIT; i /= UNIT {
-		div *= UNIT
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
-}
 
 func decodePipesData(
 	f *os.File,

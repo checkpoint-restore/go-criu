@@ -44,7 +44,7 @@ func ProtoHandler(magic string) (proto.Message, error) {
 	case "FIFO":
 		return &FifoEntry{}, nil
 	case "FIFO_DATA":
-		return &FifoEntry{}, nil
+		return &PipeDataEntry{}, nil
 	case "FILES":
 		return &FileEntry{}, nil
 	case "FILE_LOCKS":

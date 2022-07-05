@@ -151,7 +151,7 @@ func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	// Decode options
 	decodeCmd.Flags().StringVarP(&inputFilePath, "input", "i", "",
-		"Path to the CRIU binary file")
+		"Path to the binary image file")
 	decodeCmd.MarkFlagRequired("input")
 	decodeCmd.Flags().StringVarP(&outputFilePath, "output", "o", "",
 		"Path to the destination JSON file")

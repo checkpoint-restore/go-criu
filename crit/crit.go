@@ -69,7 +69,7 @@ func (c *crit) Info() (*CriuImage, error) {
 func (c *crit) Parse() (*CriuImage, error) {
 	jsonData, err := os.ReadFile(c.inputFilePath)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("Error opening JSON file: ", err))
+		return nil, errors.New(fmt.Sprint("Error reading JSON file: ", err))
 	}
 
 	img := CriuImage{}
