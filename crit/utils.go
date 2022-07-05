@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/checkpoint-restore/go-criu/v5/crit/images"
 	"github.com/checkpoint-restore/go-criu/v5/magic"
 )
 
@@ -87,4 +88,140 @@ func countImg(f *os.File) (*CriuImage, error) {
 	entry := CriuEntry{Extra: strconv.Itoa(count)}
 	img.Entries = append(img.Entries, &entry)
 	return &img, nil
+}
+
+// Helper to decode image when file path is given
+func getImg(path string) (*CriuImage, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, errors.New(fmt.Sprint("Error opening binary file: ", err))
+	}
+	defer file.Close()
+
+	return decodeImg(file, false)
+}
+
+// Global variables to cache loaded images
+var (
+	filesImg, regImg, pipeImg, unixSkImg *CriuImage
+)
+
+// Helper to get file path for exploring file descriptors
+func getFilePath(dir string, fId uint32, fType images.FdTypes) (string, error) {
+	var filePath string
+	var err error
+	// Get open files
+	if filesImg == nil {
+		filesImg, err = getImg(fmt.Sprintf("%s/files.img", dir))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Check if file entry is present
+	var file *images.FileEntry
+	for _, entry := range filesImg.Entries {
+		file = entry.Message.(*images.FileEntry)
+		if file.GetId() == fId {
+			break
+		}
+	}
+
+	switch fType {
+	case images.FdTypes_REG:
+		filePath, err = getRegFilePath(dir, file, fId)
+	case images.FdTypes_PIPE:
+		filePath, err = getPipeFilePath(dir, file, fId)
+	case images.FdTypes_UNIXSK:
+		filePath, err = getUnixSkFilePath(dir, file, fId)
+	default:
+		filePath = fmt.Sprintf("%s.%d", images.FdTypes_name[int32(fType)], fId)
+	}
+
+	return filePath, err
+}
+
+func getRegFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
+	var err error
+	if file != nil {
+		if file.GetReg() != nil {
+			return file.GetReg().GetName(), nil
+		}
+		return "Unknown path", nil
+	}
+
+	if regImg == nil {
+		regImg, err = getImg(fmt.Sprintf("%s/reg-files.img", dir))
+		if err != nil {
+			return "", err
+		}
+	}
+	for _, entry := range regImg.Entries {
+		regFile := entry.Message.(*images.RegFileEntry)
+		if regFile.GetId() == fId {
+			return regFile.GetName(), nil
+		}
+	}
+
+	return "Unknown path", nil
+}
+
+func getPipeFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
+	var err error
+	if file != nil {
+		if file.GetPipe() != nil {
+			return fmt.Sprintf("pipe[%d]", file.GetPipe().GetPipeId()), nil
+		}
+		return "pipe[?]", nil
+	}
+
+	if pipeImg == nil {
+		pipeImg, err = getImg(fmt.Sprintf("%s/pipes.img", dir))
+		if err != nil {
+			return "", err
+		}
+	}
+	for _, entry := range pipeImg.Entries {
+		pipeFile := entry.Message.(*images.PipeEntry)
+		if pipeFile.GetId() == fId {
+			return fmt.Sprintf("pipe[%d]", pipeFile.GetPipeId()), nil
+		}
+	}
+
+	return "pipe[?]", nil
+}
+
+func getUnixSkFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
+	var err error
+	if file != nil {
+		if file.GetUsk() != nil {
+			return fmt.Sprintf(
+				"unix[%d (%d) %s]",
+				file.GetUsk().GetIno(),
+				file.GetUsk().GetPeer(),
+				file.GetUsk().GetName(),
+			), nil
+		}
+		return "unix[?]", nil
+	}
+
+	if unixSkImg == nil {
+		unixSkImg, err = getImg(fmt.Sprintf("%s/unixsk.img", dir))
+		if err != nil {
+			return "", err
+		}
+	}
+	for _, entry := range unixSkImg.Entries {
+		unixSkFile := entry.Message.(*images.UnixSkEntry)
+		if unixSkFile.GetId() == fId {
+			return fmt.Sprintf(
+				"unix[%d (%d) %s]",
+				unixSkFile.GetIno(),
+				unixSkFile.GetPeer(),
+				unixSkFile.GetName(),
+			), nil
+		}
+	}
+
+	return "unix[?]", nil
 }

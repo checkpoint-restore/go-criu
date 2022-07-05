@@ -15,7 +15,7 @@ import (
 var c crit.CritSvc
 
 // All members needed for crit struct
-var inputFilePath, outputFilePath, inputDirPath, exploreType string
+var inputFilePath, outputFilePath, inputDirPath string
 var pretty, noPayload bool
 
 var rootCmd = &cobra.Command{
@@ -34,7 +34,7 @@ var decodeCmd = &cobra.Command{
 If no output file is provided, the JSON is printed to stdout.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.New(inputFilePath, outputFilePath,
-			inputDirPath, exploreType, pretty, noPayload)
+			inputDirPath, pretty, noPayload)
 		img, err := c.Decode()
 		if err != nil {
 			log.Fatal(err)
@@ -73,7 +73,7 @@ var encodeCmd = &cobra.Command{
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.New(inputFilePath, outputFilePath,
-			inputDirPath, exploreType, pretty, noPayload)
+			inputDirPath, pretty, noPayload)
 		// Convert JSON to Go struct
 		img, err := c.Parse()
 		if err != nil {
@@ -95,7 +95,7 @@ var showCmd = &cobra.Command{
 		inputFilePath = args[0]
 		pretty = true
 		c = crit.New(inputFilePath, outputFilePath,
-			inputDirPath, exploreType, pretty, noPayload)
+			inputDirPath, pretty, noPayload)
 		img, err := c.Decode()
 		if err != nil {
 			log.Fatal(err)
@@ -116,7 +116,7 @@ var infoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
 		c = crit.New(inputFilePath, outputFilePath,
-			inputDirPath, exploreType, pretty, noPayload)
+			inputDirPath, pretty, noPayload)
 		img, err := c.Info()
 		if err != nil {
 			log.Fatal(err)
@@ -137,12 +137,37 @@ var xCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputDirPath = args[0]
-		exploreType = args[1]
+		// We can use an empty interface to hold the
+		// returned values since we don't really care
+		// about the data itself, as long as we can
+		// marshal it into JSON and display it.
+		var xData interface{}
+		var err error
+
 		c = crit.New(inputFilePath, outputFilePath,
-			inputDirPath, exploreType, pretty, noPayload)
-		if err := c.X(); err != nil {
+			inputDirPath, pretty, noPayload)
+		// Switch the explore type and call the handler.
+		switch args[1] {
+		case "ps":
+			xData, err = c.ExplorePs()
+		case "fds":
+			xData, err = c.ExploreFds()
+		case "mems":
+			xData, err = c.ExploreMems()
+		case "rss":
+			xData, err = c.ExploreRss()
+		default:
+			err = errors.New("Error exploring directory: Invalid explore type")
+		}
+		if err != nil {
 			log.Fatal(err)
 		}
+
+		jsonData, err := json.MarshalIndent(xData, "", "    ")
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+		}
+		fmt.Println(string(jsonData))
 	},
 }
 

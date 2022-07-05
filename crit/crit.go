@@ -10,35 +10,37 @@ import (
 type crit struct {
 	inputFilePath  string
 	outputFilePath string
-	inputDirPath   string
-	exploreType    string
-	pretty         bool
-	noPayload      bool
+	// Directory path is required only for `crit explore`
+	inputDirPath string
+	pretty       bool
+	noPayload    bool
 }
 
 type CritSvc interface {
-	// Read binary file into Go struct
+	// Read binary file into Go struct (`decode.go`)
 	Decode() (*CriuImage, error)
 	// Read only counts of binary file entries into Go struct
 	Info() (*CriuImage, error)
 	// Read JSON into Go struct
 	Parse() (*CriuImage, error)
-	// Write JSON to binary file
+	// Write JSON to binary file (`encode.go`)
 	Encode(*CriuImage) error
-	// Explore process information
-	X() error
+	// Explore process information (`explore.go`)
+	ExplorePs() (*PsTree, error)
+	ExploreFds() ([]*Fd, error)
+	ExploreMems() ([]*MemMap, error)
+	ExploreRss() ([]*RssMap, error)
 }
 
 func New(
 	inputFilePath, outputFilePath,
-	inputDirPath, exploreType string,
+	inputDirPath string,
 	pretty, noPayload bool,
 ) CritSvc {
 	return &crit{
 		inputFilePath:  inputFilePath,
 		outputFilePath: outputFilePath,
 		inputDirPath:   inputDirPath,
-		exploreType:    exploreType,
 		pretty:         pretty,
 		noPayload:      noPayload,
 	}
@@ -89,5 +91,3 @@ func (c *crit) Encode(img *CriuImage) error {
 	// Convert JSON to Go struct
 	return encodeImg(img, imgFile)
 }
-
-func (c *crit) X() error { return nil }
