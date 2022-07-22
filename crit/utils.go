@@ -141,6 +141,7 @@ func getFilePath(dir string, fId uint32, fType images.FdTypes) (string, error) {
 	return filePath, err
 }
 
+// Helper to get file path of regular files
 func getRegFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
 	var err error
 	if file != nil {
@@ -166,6 +167,7 @@ func getRegFilePath(dir string, file *images.FileEntry, fId uint32) (string, err
 	return "Unknown path", nil
 }
 
+// Helper to get file path of pipe files
 func getPipeFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
 	var err error
 	if file != nil {
@@ -191,6 +193,7 @@ func getPipeFilePath(dir string, file *images.FileEntry, fId uint32) (string, er
 	return "pipe[?]", nil
 }
 
+// Helper to get file path of UNIX socket files
 func getUnixSkFilePath(dir string, file *images.FileEntry, fId uint32) (string, error) {
 	var err error
 	if file != nil {

@@ -10,6 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// decodeImg identifies the type of image file
+// and calls the appropriate decode handler
 func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	img := CriuImage{}
 	var err error
@@ -52,6 +54,8 @@ func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	return &img, nil
 }
 
+// decodeDefault is used for all image files
+// that are in the standard protobuf format
 func (img *CriuImage) decodeDefault(
 	f *os.File,
 	decodeExtra func(*os.File, proto.Message, bool) (string, error),
@@ -92,6 +96,7 @@ func (img *CriuImage) decodeDefault(
 	return nil
 }
 
+// Special handler for pagemap image
 func (img *CriuImage) decodePagemap(f *os.File) error {
 	sizeBuf := make([]byte, 4)
 	// First entry is pagemap head
@@ -121,6 +126,7 @@ func (img *CriuImage) decodePagemap(f *os.File) error {
 	return nil
 }
 
+// Special handler for ghost image
 func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 	sizeBuf := make([]byte, 4)
 	if _, err := f.Read(sizeBuf); err != nil {

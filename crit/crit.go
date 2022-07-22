@@ -8,32 +8,42 @@ import (
 	"os"
 )
 
-type crit struct {
-	inputFilePath  string
-	outputFilePath string
-	// Directory path is required only for `crit explore`
-	inputDirPath string
-	pretty       bool
-	noPayload    bool
-	cli          bool
-}
-
+// CritSvc is the interface that wraps all CRIT operations.
+// To create a CRIT service instance, use New().
 type CritSvc interface {
-	// Read binary file into Go struct (`decode.go`)
+	// Read binary image file into Go struct (decode.go)
 	Decode() (*CriuImage, error)
-	// Read only counts of binary file entries into Go struct
+	// Read only counts of image file entries into Go struct
 	Info() (*CriuImage, error)
 	// Read JSON into Go struct
 	Parse() (*CriuImage, error)
-	// Write JSON to binary file (`encode.go`)
+	// Write JSON to binary image file (encode.go)
 	Encode(*CriuImage) error
-	// Explore process information (`explore.go`)
+	// Explore process information (explore.go)
 	ExplorePs() (*PsTree, error)
 	ExploreFds() ([]*Fd, error)
 	ExploreMems() ([]*MemMap, error)
 	ExploreRss() ([]*RssMap, error)
 }
 
+// crit implements the CritSvc interface. It contains:
+// * Path of the input file
+// * Path of the output file
+// * Path of the input directory (for `crit explore`)
+// * Boolean to provide indented and multi-line JSON output
+// * Boolean to skip payload data
+// * Boolean to indicate CLI usage
+type crit struct {
+	inputFilePath  string
+	outputFilePath string
+	// Directory path is required only for exploring
+	inputDirPath string
+	pretty       bool
+	noPayload    bool
+	cli          bool
+}
+
+// New creates a CRIT service to use in a Go program
 func New(
 	inputFilePath, outputFilePath,
 	inputDirPath string,
@@ -67,6 +77,7 @@ func NewCli(
 	}
 }
 
+// Decode loads a binary image file into a CriuImage object
 func (c *crit) Decode() (*CriuImage, error) {
 	// If no input path is provided in the CLI, read
 	// from stdin (pipe, redirection, or keyboard)
@@ -86,6 +97,9 @@ func (c *crit) Decode() (*CriuImage, error) {
 	return decodeImg(imgFile, c.noPayload)
 }
 
+// Info loads a binary image file into a CriuImage object
+// with a single entry - the number of entries in the file.
+// No payload data is present in the returned object.
 func (c *crit) Info() (*CriuImage, error) {
 	// If no input path is provided in the CLI, read
 	// from stdin (pipe, redirection, or keyboard)
@@ -105,6 +119,8 @@ func (c *crit) Info() (*CriuImage, error) {
 	return countImg(imgFile)
 }
 
+// Parse is the JSON equivalent of Decode.
+// It loads a JSON file into a CriuImage object.
 func (c *crit) Parse() (*CriuImage, error) {
 	var (
 		jsonData []byte
@@ -133,6 +149,7 @@ func (c *crit) Parse() (*CriuImage, error) {
 	return &img, nil
 }
 
+// Encode dumps a CriuImage object into a binary image file
 func (c *crit) Encode(img *CriuImage) error {
 	// If no output path is provided in the CLI, print to stdout
 	if c.outputFilePath == "" {

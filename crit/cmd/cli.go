@@ -18,6 +18,7 @@ var c crit.CritSvc
 var inputFilePath, outputFilePath, inputDirPath string
 var pretty, noPayload bool
 
+// The `crit` command
 var rootCmd = &cobra.Command{
 	Use:   "crit",
 	Short: "CRIU Image Tool(CRIT) to manipulate CRIU image files",
@@ -27,6 +28,7 @@ This is a Go implementation of the original Python app.
 Find the complete documentation is at https://criu.org/CRIT`,
 }
 
+// The `crit decode` command
 var decodeCmd = &cobra.Command{
 	Use:   "decode",
 	Short: "Convert binary image to JSON",
@@ -67,9 +69,10 @@ If no output file is provided, the JSON is printed to stdout.`,
 	},
 }
 
+// The `crit encode` command
 var encodeCmd = &cobra.Command{
 	Use:   "encode",
-	Short: "Convert JSON to binary file",
+	Short: "Convert JSON to binary image file",
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
 		c = crit.NewCli(inputFilePath, outputFilePath,
@@ -79,13 +82,14 @@ var encodeCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		// Write Go struct to binary file
+		// Write Go struct to binary image file
 		if err := c.Encode(img); err != nil {
 			log.Fatal(err)
 		}
 	},
 }
 
+// The `crit show` command
 var showCmd = &cobra.Command{
 	Use:   "show INPATH",
 	Short: "Convert binary image to human-readable JSON",
@@ -109,6 +113,7 @@ var showCmd = &cobra.Command{
 	},
 }
 
+// The `crit info` command
 var infoCmd = &cobra.Command{
 	Use:   "info INPATH",
 	Short: "Show information about the image file",
@@ -130,15 +135,19 @@ var infoCmd = &cobra.Command{
 	},
 }
 
+// The `crit x` command
 var xCmd = &cobra.Command{
 	Use:   "x DIR {ps|fds|mems|rss}",
 	Short: "Explore the image directory",
 	Long:  "Explore the image directory with one of (ps, fds, mems, rss) options",
-	Args:  cobra.ExactArgs(2),
+	// Exactly two arguments are required:
+	// * Path of the input directory
+	// * Explore type
+	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputDirPath = args[0]
 		// We can use an empty interface to hold the
-		// returned values since we don't really care
+		// returned object since we don't really care
 		// about the data itself, as long as we can
 		// marshal it into JSON and display it.
 		var xData interface{}
@@ -171,6 +180,7 @@ var xCmd = &cobra.Command{
 	},
 }
 
+// Add all commands to the root command and configure flags
 func init() {
 	// Disable completion generation
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
