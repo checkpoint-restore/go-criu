@@ -33,7 +33,7 @@ var decodeCmd = &cobra.Command{
 	Long: `Convert the input binary image to JSON and write it to a file.
 If no output file is provided, the JSON is printed to stdout.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c = crit.New(inputFilePath, outputFilePath,
+		c = crit.NewCli(inputFilePath, outputFilePath,
 			inputDirPath, pretty, noPayload)
 		img, err := c.Decode()
 		if err != nil {
@@ -72,7 +72,7 @@ var encodeCmd = &cobra.Command{
 	Short: "Convert JSON to binary file",
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
-		c = crit.New(inputFilePath, outputFilePath,
+		c = crit.NewCli(inputFilePath, outputFilePath,
 			inputDirPath, pretty, noPayload)
 		// Convert JSON to Go struct
 		img, err := c.Parse()
@@ -94,7 +94,7 @@ var showCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
 		pretty = true
-		c = crit.New(inputFilePath, outputFilePath,
+		c = crit.NewCli(inputFilePath, outputFilePath,
 			inputDirPath, pretty, noPayload)
 		img, err := c.Decode()
 		if err != nil {
@@ -115,7 +115,7 @@ var infoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
-		c = crit.New(inputFilePath, outputFilePath,
+		c = crit.NewCli(inputFilePath, outputFilePath,
 			inputDirPath, pretty, noPayload)
 		img, err := c.Info()
 		if err != nil {
@@ -144,7 +144,7 @@ var xCmd = &cobra.Command{
 		var xData interface{}
 		var err error
 
-		c = crit.New(inputFilePath, outputFilePath,
+		c = crit.NewCli(inputFilePath, outputFilePath,
 			inputDirPath, pretty, noPayload)
 		// Switch the explore type and call the handler.
 		switch args[1] {
@@ -177,7 +177,6 @@ func init() {
 	// Decode options
 	decodeCmd.Flags().StringVarP(&inputFilePath, "input", "i", "",
 		"Path to the binary image file")
-	decodeCmd.MarkFlagRequired("input")
 	decodeCmd.Flags().StringVarP(&outputFilePath, "output", "o", "",
 		"Path to the destination JSON file")
 	decodeCmd.Flags().BoolVar(&pretty, "pretty", false,

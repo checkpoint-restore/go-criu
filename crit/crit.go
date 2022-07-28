@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -14,6 +15,7 @@ type crit struct {
 	inputDirPath string
 	pretty       bool
 	noPayload    bool
+	cli          bool
 }
 
 type CritSvc interface {
@@ -43,10 +45,37 @@ func New(
 		inputDirPath:   inputDirPath,
 		pretty:         pretty,
 		noPayload:      noPayload,
+		cli:            false,
+	}
+}
+
+// NewCli creates a CRIT service to use in a CLI app.
+// All functions called by this service will wait for
+// input from stdin if an input path is not provided.
+func NewCli(
+	inputFilePath, outputFilePath,
+	inputDirPath string,
+	pretty, noPayload bool,
+) CritSvc {
+	return &crit{
+		inputFilePath:  inputFilePath,
+		outputFilePath: outputFilePath,
+		inputDirPath:   inputDirPath,
+		pretty:         pretty,
+		noPayload:      noPayload,
+		cli:            true,
 	}
 }
 
 func (c *crit) Decode() (*CriuImage, error) {
+	// If no input path is provided in the CLI, read
+	// from stdin (pipe, redirection, or keyboard)
+	if c.inputFilePath == "" {
+		if c.cli {
+			return decodeImg(os.Stdin, c.noPayload)
+		}
+	}
+
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
 		return nil,
@@ -58,6 +87,14 @@ func (c *crit) Decode() (*CriuImage, error) {
 }
 
 func (c *crit) Info() (*CriuImage, error) {
+	// If no input path is provided in the CLI, read
+	// from stdin (pipe, redirection, or keyboard)
+	if c.inputFilePath == "" {
+		if c.cli {
+			return countImg(os.Stdin)
+		}
+	}
+
 	imgFile, err := os.Open(c.inputFilePath)
 	if err != nil {
 		return nil,
@@ -69,9 +106,23 @@ func (c *crit) Info() (*CriuImage, error) {
 }
 
 func (c *crit) Parse() (*CriuImage, error) {
-	jsonData, err := os.ReadFile(c.inputFilePath)
+	var (
+		jsonData []byte
+		err      error
+	)
+
+	// If no input path is provided in the CLI, read
+	// from stdin (pipe, redirection, or keyboard)
+	if c.inputFilePath == "" {
+		if c.cli {
+			jsonData, err = io.ReadAll(os.Stdin)
+		}
+	} else {
+		jsonData, err = os.ReadFile(c.inputFilePath)
+	}
+
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("Error reading JSON file: ", err))
+		return nil, errors.New(fmt.Sprint("Error reading JSON: ", err))
 	}
 
 	img := CriuImage{}
