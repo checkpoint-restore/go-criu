@@ -134,6 +134,12 @@ func (c *crit) Parse() (*CriuImage, error) {
 }
 
 func (c *crit) Encode(img *CriuImage) error {
+	// If no output path is provided in the CLI, print to stdout
+	if c.outputFilePath == "" {
+		if c.cli {
+			return encodeImg(img, os.Stdout)
+		}
+	}
 	imgFile, err := os.Create(c.outputFilePath)
 	if err != nil {
 		return errors.New(fmt.Sprint("Error opening destination file: ", err))
