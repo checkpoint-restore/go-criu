@@ -3,6 +3,9 @@ test/test.coverage
 test/piggie/piggie
 test/phaul/phaul
 test/phaul/phaul.coverage
+test/crit/loop
+test/crit/*.(img|log|json)
+test/crit/stats-*
 image
 scripts/*.h
 scripts/expected.go

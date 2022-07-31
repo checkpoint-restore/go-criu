@@ -31,11 +31,14 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
 
-    - name: Run tests
+    - name: Test go-criu
       run: sudo env "PATH=$PATH" make test
 
     - name: Test magicgen script
       run: make -C scripts test
+
+    - name: Test crit
+      run: sudo make -C test crit-test
 
     - name: Check code coverage
       if: matrix.go-version == '1.18.x' && matrix.criu_branch == 'criu-dev'

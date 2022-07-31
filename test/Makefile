@@ -37,6 +37,9 @@ phaul-test: $(TEST_BINARIES)
 	pkill -9 piggie; \
 	}
 
+crit-test:
+	$(MAKE) -C crit
+
 test.coverage: *.go
 	$(GO) test \
 		-covermode=count \
@@ -78,4 +81,4 @@ clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
 	@rm -rf image $(COVERAGE_PATH)
 
-.PHONY: all clean coverage codecov phaul-test
+.PHONY: all clean coverage codecov crit-test phaul-test
