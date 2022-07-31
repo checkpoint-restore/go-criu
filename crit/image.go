@@ -141,14 +141,15 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 
 func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	// First entry is pagemap head
-	entry := CriuEntry{Message: &images.PagemapHead{}}
+	var payload proto.Message = &images.PagemapHead{}
 	for _, data := range imgData.JsonEntries {
+		entry := CriuEntry{Message: payload}
 		if err := protojson.Unmarshal(data, entry.Message); err != nil {
 			return err
 		}
 		img.Entries = append(img.Entries, &entry)
 		// Create struct for next entry
-		entry = CriuEntry{Message: &images.PagemapEntry{}}
+		payload = &images.PagemapEntry{}
 	}
 
 	return nil
