@@ -1,19 +1,32 @@
 CC ?= gcc
+GO ?= go
+CRIU ?= criu
 
-all: test clean
+all: integration-test e2e-test clean
 
-test: gen-imgs
+integration-test: test-imgs crit-test
+	@echo "Running integration test"
+	@./crit-test
+
+e2e-test: ../../crit/bin/crit test-imgs crit-test.sh
 	@echo "Running E2E test"
 	@./crit-test.sh
 
-gen-imgs: loop
-	$(eval PID := $(shell ./loop))
-	criu dump -v4 -o dump.log -D ./ -t $(PID)
+test-imgs: ../loop/loop
+	$(eval PID := $(shell ../loop/loop))
+	mkdir -p $@
+	$(CRIU) dump -v4 -o dump.log -D $@ -t $(PID)
 
-loop: loop.c
+../../crit/bin/crit:
+	$(MAKE) -C ../../crit bin/crit
+
+../loop/loop: ../loop/loop.c
 	$(CC) $^ -o $@
 
-clean:
-	@rm -f *.img *.log *.json stats-*
+crit-test: main.go
+	$(GO) build -v -o $@ $^
 
-.PHONY: all test gen-imgs clean
+clean:
+	@rm -rf test-imgs
+
+.PHONY: all test integration-test e2e-test clean
