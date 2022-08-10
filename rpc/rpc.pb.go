@@ -1331,7 +1331,6 @@ func (x *CriuNotify) GetPid() int32 {
 	return 0
 }
 
-//
 // List of features which can queried via
 // CRIU_REQ_TYPE__FEATURE_CHECK
 type CriuFeatures struct {

@@ -34,7 +34,6 @@ func MakePhaulServer(c Config) (*Server, error) {
 	return &Server{imgs: img, cfg: c, cr: cr}, nil
 }
 
-//
 // StartIter phaul.Remote methods
 func (s *Server) StartIter() error {
 	fmt.Printf("S: start iter\n")
