@@ -10,19 +10,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// CriuImage represents a CRIU binary image file
 type CriuImage struct {
 	Magic   string       `json:"magic"`
 	Entries []*CriuEntry `json:"entries"`
 }
 
+// CriuEntry represents a single entry in an image
 type CriuEntry struct {
 	proto.Message
 	Extra string
 }
 
-// Custom marshaler for the entry, as we must use
-// protojson.Marshal for the proto.Message, and
-// manually append any extra data to the entry
+// MarshalJSON is the marshaler for CriuEntry.
+// This is required as protojson.Marshal is
+// used for the proto.Message, and any extra
+// data is manually appended to the entry
 func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 	// Special handling for "count"
 	if c.Message == nil {
@@ -42,17 +45,19 @@ func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 	return data, nil
 }
 
-// Use a temporary struct to store all entries
-// as raw JSON, and unmarshal them into proper
-// proto structs depending on the magic
+// jsonImage is a temporary struct to store all
+// entries as raw JSON, and unmarshal them into
+// proper proto structs depending on the magic
 type jsonImage struct {
 	Magic       string            `json:"magic"`
 	JsonEntries []json.RawMessage `json:"entries"`
 }
 
-// Custom unmarshaler for the image, as we must check if any
-// extra data is present, remove it from the JSON byte stream
-// and unmarshal the remaining with into a proto struct
+// UnmarshalJSON is the unmarshaler for CriuImage.
+// This is required as the object must be checked
+// for any extra data, which must be removed from
+// the JSON byte stream before unmarshaling the
+// remaining bytes into a proto.Message object
 func (img *CriuImage) UnmarshalJSON(data []byte) error {
 	imgData := jsonImage{}
 	var err error
@@ -89,6 +94,8 @@ func splitJsonData(data []byte) ([]byte, string) {
 	return []byte(dataString), extraPayload
 }
 
+// unmarshalDefault is used for all JSON data
+// that is in the standard protobuf format
 func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 	for _, data := range imgData.JsonEntries {
 		// Create proto struct to hold payload
@@ -110,6 +117,7 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 	return nil
 }
 
+// Special handler for ghost image
 func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	// Process primary entry
 	entry := CriuEntry{Message: &images.GhostFileEntry{}}
@@ -139,6 +147,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	return nil
 }
 
+// Special handler for pagemap image
 func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	// First entry is pagemap head
 	var payload proto.Message = &images.PagemapHead{}

@@ -11,6 +11,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// encodeImg identifies the type of image file
+// and calls the appropriate encode handler
 func encodeImg(img *CriuImage, f *os.File) error {
 	magicMap := magic.LoadMagic()
 	var err error
@@ -68,6 +70,8 @@ func encodeImg(img *CriuImage, f *os.File) error {
 	return nil
 }
 
+// encodeDefault is used for all image files
+// that are in the standard protobuf format
 func (img *CriuImage) encodeDefault(
 	f *os.File,
 	encodeExtra func(string) ([]byte, error),
@@ -106,6 +110,7 @@ func (img *CriuImage) encodeDefault(
 	return nil
 }
 
+// Special handler for ghost image
 func (img *CriuImage) encodeGhostFile(f *os.File) error {
 	sizeBuf := make([]byte, 4)
 	// Write primary entry

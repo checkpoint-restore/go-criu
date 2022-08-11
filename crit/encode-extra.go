@@ -10,14 +10,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Extra payload handler for pipe and FIFO data
 func encodePipesData(extra string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(extra)
 }
 
+// Extra payload handler for socket queues
 func encodeSkQueues(extra string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(extra)
 }
 
+// Extra payload handler for TCP streams
 func encodeTcpStream(extra string) ([]byte, error) {
 	extraPayload := tcpStreamExtra{}
 	if err := json.Unmarshal([]byte(extra), &extraPayload); err != nil {
@@ -36,10 +39,12 @@ func encodeTcpStream(extra string) ([]byte, error) {
 	return append(inqBytes, outQBytes...), nil
 }
 
+// Extra payload handler for BPF map data
 func encodeBpfmapData(extra string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(extra)
 }
 
+// Extra payload handler for IPC semaphores
 func encodeIpcSem(extra string) ([]byte, error) {
 	extraEntries := []uint16{}
 	if err := json.Unmarshal([]byte(extra), &extraEntries); err != nil {
@@ -62,6 +67,7 @@ func encodeIpcSem(extra string) ([]byte, error) {
 	return extraPayload, nil
 }
 
+// Extra payload handler for IPC shared memory
 func encodeIpcShm(extra string) ([]byte, error) {
 	extraPayload, err := base64.StdEncoding.DecodeString(extra)
 	if err != nil {
@@ -75,6 +81,7 @@ func encodeIpcShm(extra string) ([]byte, error) {
 	return extraPayload, nil
 }
 
+// Extra payload handler for IPC messages
 func encodeIpcMsg(extra string) ([]byte, error) {
 	extraEntries := []string{}
 	if err := json.Unmarshal([]byte(extra), &extraEntries); err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/checkpoint-restore/go-criu/v5/crit/images"
 )
 
+// PsTree represents the process tree
 type PsTree struct {
 	PId      uint32              `json:"pId"`
 	PgId     uint32              `json:"pgId"`
@@ -17,6 +18,7 @@ type PsTree struct {
 	Children []*PsTree           `json:"children,omitempty"`
 }
 
+// ExplorePs constructs the process tree and returns the root process
 func (c *crit) ExplorePs() (*PsTree, error) {
 	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
 	if err != nil {
@@ -60,16 +62,20 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 	return psTreeRoot, nil
 }
 
+// Fd represents the file descriptors opened in a single process
 type Fd struct {
 	PId   uint32  `json:"pId"`
 	Files []*File `json:"files,omitempty"`
 }
 
+// File represents a single opened file
 type File struct {
 	Fd   string `json:"fd"`
 	Path string `json:"path"`
 }
 
+// ExploreFds searches the process tree for open files
+// and returns a list of PIDs with the corresponding files
 func (c *crit) ExploreFds() ([]*Fd, error) {
 	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
 	if err != nil {
@@ -137,12 +143,14 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 	return fds, nil
 }
 
+// MemMap represents the memory mapping of a single process
 type MemMap struct {
 	PId  uint32 `json:"pId"`
 	Exe  string `json:"exe"`
 	Mems []*Mem `json:"mems,omitempty"`
 }
 
+// Mem represents the memory mapping of a single file
 type Mem struct {
 	Start      string `json:"start"`
 	End        string `json:"end"`
@@ -150,6 +158,8 @@ type Mem struct {
 	Resource   string `json:"resource,omitempty"`
 }
 
+// ExploreMems traverses the process tree and returns a
+// list of processes with the corresponding memory mapping
 func (c *crit) ExploreMems() ([]*MemMap, error) {
 	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
 	if err != nil {
@@ -249,6 +259,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 	return memMaps, nil
 }
 
+// RssMap represents the resident set size mapping of a single process
 type RssMap struct {
 	PId uint32 `json:"pId"`
 	/*
@@ -260,6 +271,7 @@ type RssMap struct {
 	Rsses []*Rss `json:"rss,omitempty"`
 }
 
+// Rss represents a single resident set size mapping
 type Rss struct {
 	PhyAddr  string `json:"phyAddr,omitempty"`
 	PhyPages int64  `json:"phyPages,omitempty"`
@@ -267,11 +279,14 @@ type Rss struct {
 	Resource string `json:"resource,omitempty"`
 }
 
+// Vma represents a single virtual memory area
 type Vma struct {
 	Addr  string `json:"addr,omitempty"`
 	Pages int64  `json:"pages,omitempty"`
 }
 
+// ExploreRss traverses the process tree and returns
+// a list of processes with their RSS mappings
 func (c *crit) ExploreRss() ([]*RssMap, error) {
 	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
 	if err != nil {

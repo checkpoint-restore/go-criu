@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Extra data handler for pipe and FIFO data
 func decodePipesData(
 	f *os.File,
 	payload proto.Message,
@@ -35,6 +36,7 @@ func decodePipesData(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
+// Extra data handler for socket queues
 func decodeSkQueues(
 	f *os.File,
 	payload proto.Message,
@@ -62,6 +64,7 @@ type tcpStreamExtra struct {
 	OutQ string `json:"outQ"`
 }
 
+// Extra data handler for TCP streams
 func decodeTcpStream(
 	f *os.File,
 	payload proto.Message,
@@ -95,6 +98,7 @@ func decodeTcpStream(
 	return string(extraJson), err
 }
 
+// Extra data handler for BPF map data
 func decodeBpfmapData(
 	f *os.File,
 	payload proto.Message,
@@ -117,6 +121,7 @@ func decodeBpfmapData(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
+// Extra data handler for IPC semaphores
 func decodeIpcSem(
 	f *os.File,
 	payload proto.Message,
@@ -149,6 +154,7 @@ func decodeIpcSem(
 	return string(extraJson), err
 }
 
+// Extra data handler for IPC shared memory
 func decodeIpcShm(
 	f *os.File,
 	payload proto.Message,
@@ -174,6 +180,7 @@ func decodeIpcShm(
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
+// Extra data handler for IPC messages
 func decodeIpcMsg(
 	f *os.File,
 	payload proto.Message,
