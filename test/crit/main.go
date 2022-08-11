@@ -66,7 +66,7 @@ func getImgs() ([]string, error) {
 	// external tools (ifaddr, route, tmpfs). As these
 	// images cannot be processed by CRIT, they are
 	// excluded from the tests.
-	var skipImgs = []string{
+	skipImgs := []string{
 		"pages-",
 		"pages-shmem-",
 		"iptables-",
