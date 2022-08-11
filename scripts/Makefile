@@ -14,6 +14,6 @@ test:
 	@rm -f input.h output.go expected.go
 
 clean:
-	rm -f ../magic/magic.go
+	rm -f ../magic/magic.go magic.h
 
 .PHONY: magic-gen test clean
