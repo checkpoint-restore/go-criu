@@ -30,7 +30,7 @@ type CritSvc interface {
 // * Path of the input file
 // * Path of the output file
 // * Path of the input directory (for `crit explore`)
-// * Boolean to provide indented and multi-line JSON output
+// * Boolean to format and indent JSON output
 // * Boolean to skip payload data
 // * Boolean to indicate CLI usage
 type crit struct {
