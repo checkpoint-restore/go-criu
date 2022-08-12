@@ -26,7 +26,10 @@ func decodePipesData(
 	extraSize := p.GetBytes()
 
 	if noPayload {
-		f.Seek(int64(extraSize), 1)
+		_, err := f.Seek(int64(extraSize), 1)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(int64(extraSize)), nil
 	}
 	extraBuf := make([]byte, extraSize)
@@ -49,7 +52,10 @@ func decodeSkQueues(
 	extraSize := p.GetLength()
 
 	if noPayload {
-		f.Seek(int64(extraSize), 1)
+		_, err := f.Seek(int64(extraSize), 1)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(int64(extraSize)), nil
 	}
 	extraBuf := make([]byte, extraSize)
@@ -78,7 +84,10 @@ func decodeTcpStream(
 	outQLen := p.GetOutqLen()
 
 	if noPayload {
-		f.Seek(0, 2)
+		_, err := f.Seek(0, 2)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(int64(inQLen + outQLen)), nil
 	}
 
@@ -111,7 +120,10 @@ func decodeBpfmapData(
 	extraSize := p.GetKeysBytes() + p.GetValuesBytes()
 
 	if noPayload {
-		f.Seek(int64(extraSize), 1)
+		_, err := f.Seek(int64(extraSize), 1)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(int64(extraSize)), nil
 	}
 	extraBuf := make([]byte, extraSize)
@@ -137,7 +149,10 @@ func decodeIpcSem(
 	roundedSize := (extraSize/8 + 1) * 8
 
 	if noPayload {
-		f.Seek(roundedSize, 1)
+		_, err := f.Seek(roundedSize, 1)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(extraSize), nil
 	}
 	extraPayload := []uint16{}
@@ -149,7 +164,10 @@ func decodeIpcSem(
 		}
 		extraPayload = append(extraPayload, binary.LittleEndian.Uint16(extraBuf))
 	}
-	f.Seek(roundedSize-extraSize, 1)
+	_, err := f.Seek(roundedSize-extraSize, 1)
+	if err != nil {
+		return "", err
+	}
 	extraJson, err := json.Marshal(extraPayload)
 	return string(extraJson), err
 }
@@ -169,14 +187,20 @@ func decodeIpcShm(
 	roundedSize := (extraSize/4 + 1) * 4
 
 	if noPayload {
-		f.Seek(roundedSize, 1)
+		_, err := f.Seek(roundedSize, 1)
+		if err != nil {
+			return "", err
+		}
 		return countBytes(extraSize), nil
 	}
 	extraBuf := make([]byte, extraSize)
 	if _, err := f.Read(extraBuf); err != nil {
 		return "", err
 	}
-	f.Seek(roundedSize-extraSize, 1)
+	_, err := f.Seek(roundedSize-extraSize, 1)
+	if err != nil {
+		return "", err
+	}
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
 }
 
@@ -200,7 +224,7 @@ func decodeIpcMsg(
 	for i := 0; i < int(msgQNum); i++ {
 		n, err := f.Read(sizeBuf)
 		if n == 0 {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return "", err
@@ -219,7 +243,10 @@ func decodeIpcMsg(
 		roundedMsgSize := (msgSize/8 + 1) * 8
 
 		if noPayload {
-			f.Seek(roundedMsgSize, 1)
+			_, err = f.Seek(roundedMsgSize, 1)
+			if err != nil {
+				return "", err
+			}
 			totalSize += int64(extraSize) + msgSize
 		} else {
 			jsonMsg, err := protojson.Marshal(msg)
@@ -234,7 +261,10 @@ func decodeIpcMsg(
 			}
 			msgData := base64.StdEncoding.EncodeToString(msgDataBuf)
 			extraPayload = append(extraPayload, msgData)
-			f.Seek(roundedMsgSize-msgSize, 1)
+			_, err = f.Seek(roundedMsgSize-msgSize, 1)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 

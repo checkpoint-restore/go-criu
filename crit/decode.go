@@ -3,6 +3,7 @@ package crit
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"io"
 	"os"
 
@@ -149,7 +150,7 @@ func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 		for {
 			n, err := f.Read(sizeBuf)
 			if n == 0 {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
 				return err

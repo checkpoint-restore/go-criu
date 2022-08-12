@@ -8,7 +8,6 @@ lint:
 	golangci-lint run ./...
 
 build:
-	$(MAKE) -C scripts
 	$(GO) build -v ./...
 	# Build crit binary
 	$(MAKE) -C crit bin/crit

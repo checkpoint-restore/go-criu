@@ -82,7 +82,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 		return nil, err
 	}
 
-	var fds []*Fd
+	fds := make([]*Fd, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
@@ -176,7 +176,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		return vmaIdMap[shmId]
 	}
 
-	var memMaps []*MemMap
+	memMaps := make([]*MemMap, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
@@ -293,7 +293,7 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 		return nil, err
 	}
 
-	var rssMaps []*RssMap
+	rssMaps := make([]*RssMap, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
