@@ -4,12 +4,13 @@
 
 ## go-criu -- Go bindings for CRIU
 
-This repository provides Go bindings for [CRIU](https://criu.org/). The code is based on the Go-based PHaul
-implementation from the CRIU repository. For easier inclusion into other Go projects the
-CRIU Go bindings have been moved to this repository.
+This repository provides Go bindings for [CRIU](https://criu.org/).
+The code is based on the Go-based PHaul implementation from the CRIU repository.
+For easier inclusion into other Go projects, the CRIU Go bindings have been moved to this repository.
 
-The Go bindings provide an easy way to use the CRIU RPC calls from Go without the need
-to set up all the infrastructure to make the actual RPC connection to CRIU.
+### CRIU
+The Go bindings provide an easy way to use the CRIU RPC calls from Go without
+the need to set up all the infrastructure to make the actual RPC connection to CRIU.
 
 The following example would print the version of CRIU:
 ```go
@@ -35,6 +36,13 @@ or to just check if at least a certain CRIU version is installed:
 	c := criu.MakeCriu()
 	result, err := c.IsCriuAtLeast(31100)
 ```
+
+### CRIT
+
+The `crit` package provides bindings to decode, encode, and manipulate
+CRIU image files natively within Go. It also provides a CLI tool similar
+to the original CRIT Python tool. To get started with this, see the docs
+at https://criu.org/CRIT_(Go_library).
 
 ## Releases
 
@@ -86,7 +94,7 @@ by adding a "Signed-off-by" line containing the contributor's name and e-mail
 to every commit message. Your signature certifies that you wrote the patch or
 otherwise have the right to pass it on as an open-source patch.
 
-### License and copyright
+## License and copyright
 
 Unless mentioned otherwise in a specific file's header, all code in
 this project is released under the Apache 2.0 license.
