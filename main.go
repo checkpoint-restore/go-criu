@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/checkpoint-restore/go-criu/v5/rpc"
+	"github.com/checkpoint-restore/go-criu/v5/crit/images"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -86,7 +86,7 @@ func (c *Criu) sendAndRecv(reqB []byte) ([]byte, int, error) {
 	return respB, n, nil
 }
 
-func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) error {
+func (c *Criu) doSwrk(reqType images.CriuReqType, opts *images.CriuOpts, nfy Notify) error {
 	resp, err := c.doSwrkWithResp(reqType, opts, nfy, nil)
 	if err != nil {
 		return err
@@ -99,10 +99,10 @@ func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) e
 	return nil
 }
 
-func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify, features *rpc.CriuFeatures) (*rpc.CriuResp, error) {
-	var resp *rpc.CriuResp
+func (c *Criu) doSwrkWithResp(reqType images.CriuReqType, opts *images.CriuOpts, nfy Notify, features *images.CriuFeatures) (*images.CriuResp, error) {
+	var resp *images.CriuResp
 
-	req := rpc.CriuReq{
+	req := images.CriuReq{
 		Type: &reqType,
 		Opts: opts,
 	}
@@ -135,7 +135,7 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 			return nil, err
 		}
 
-		resp = &rpc.CriuResp{}
+		resp = &images.CriuResp{}
 		err = proto.Unmarshal(respB[:respS], resp)
 		if err != nil {
 			return nil, err
@@ -147,7 +147,7 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 		}
 
 		respType := resp.GetType()
-		if respType != rpc.CriuReqType_NOTIFY {
+		if respType != images.CriuReqType_NOTIFY {
 			break
 		}
 		if nfy == nil {
@@ -182,7 +182,7 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 			return resp, err
 		}
 
-		req = rpc.CriuReq{
+		req = images.CriuReq{
 			Type:          &respType,
 			NotifySuccess: proto.Bool(true),
 		}
@@ -192,28 +192,28 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 }
 
 // Dump dumps a process
-func (c *Criu) Dump(opts *rpc.CriuOpts, nfy Notify) error {
-	return c.doSwrk(rpc.CriuReqType_DUMP, opts, nfy)
+func (c *Criu) Dump(opts *images.CriuOpts, nfy Notify) error {
+	return c.doSwrk(images.CriuReqType_DUMP, opts, nfy)
 }
 
 // Restore restores a process
-func (c *Criu) Restore(opts *rpc.CriuOpts, nfy Notify) error {
-	return c.doSwrk(rpc.CriuReqType_RESTORE, opts, nfy)
+func (c *Criu) Restore(opts *images.CriuOpts, nfy Notify) error {
+	return c.doSwrk(images.CriuReqType_RESTORE, opts, nfy)
 }
 
 // PreDump does a pre-dump
-func (c *Criu) PreDump(opts *rpc.CriuOpts, nfy Notify) error {
-	return c.doSwrk(rpc.CriuReqType_PRE_DUMP, opts, nfy)
+func (c *Criu) PreDump(opts *images.CriuOpts, nfy Notify) error {
+	return c.doSwrk(images.CriuReqType_PRE_DUMP, opts, nfy)
 }
 
 // StartPageServer starts the page server
-func (c *Criu) StartPageServer(opts *rpc.CriuOpts) error {
-	return c.doSwrk(rpc.CriuReqType_PAGE_SERVER, opts, nil)
+func (c *Criu) StartPageServer(opts *images.CriuOpts) error {
+	return c.doSwrk(images.CriuReqType_PAGE_SERVER, opts, nil)
 }
 
 // StartPageServerChld starts the page server and returns PID and port
-func (c *Criu) StartPageServerChld(opts *rpc.CriuOpts) (int, int, error) {
-	resp, err := c.doSwrkWithResp(rpc.CriuReqType_PAGE_SERVER_CHLD, opts, nil, nil)
+func (c *Criu) StartPageServerChld(opts *images.CriuOpts) (int, int, error) {
+	resp, err := c.doSwrkWithResp(images.CriuReqType_PAGE_SERVER_CHLD, opts, nil, nil)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -224,12 +224,12 @@ func (c *Criu) StartPageServerChld(opts *rpc.CriuOpts) (int, int, error) {
 // GetCriuVersion executes the VERSION RPC call and returns the version
 // as an integer. Major * 10000 + Minor * 100 + SubLevel
 func (c *Criu) GetCriuVersion() (int, error) {
-	resp, err := c.doSwrkWithResp(rpc.CriuReqType_VERSION, nil, nil, nil)
+	resp, err := c.doSwrkWithResp(images.CriuReqType_VERSION, nil, nil, nil)
 	if err != nil {
 		return 0, err
 	}
 
-	if resp.GetType() != rpc.CriuReqType_VERSION {
+	if resp.GetType() != images.CriuReqType_VERSION {
 		return 0, fmt.Errorf("Unexpected CRIU RPC response")
 	}
 
