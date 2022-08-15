@@ -1,6 +1,6 @@
 module github.com/checkpoint-restore/go-criu/v5
 
-go 1.13
+go 1.16
 
 require (
 	github.com/spf13/cobra v1.4.0
