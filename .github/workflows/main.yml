@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.17.x, 1.18.x]
+        go-version: [1.17.x, 1.18.x, 1.19.x]
         # criu is pre-installed in the Ubuntu 20.04 GitHub Action virtual
         # environment as a dependency for Podman
         criu_branch: ["", criu-dev]
