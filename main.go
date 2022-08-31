@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/checkpoint-restore/go-criu/v5/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	"google.golang.org/protobuf/proto"
 )
 

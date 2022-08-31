@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/checkpoint-restore/go-criu/v5/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 )
 
 // PsTree represents the process tree

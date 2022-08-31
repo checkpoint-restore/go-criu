@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v5"
-	"github.com/checkpoint-restore/go-criu/v5/crit"
-	"github.com/checkpoint-restore/go-criu/v5/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6"
+	"github.com/checkpoint-restore/go-criu/v6/crit"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	"google.golang.org/protobuf/proto"
 )
 
