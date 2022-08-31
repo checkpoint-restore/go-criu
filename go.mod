@@ -1,4 +1,4 @@
-module github.com/checkpoint-restore/go-criu/v5
+module github.com/checkpoint-restore/go-criu/v6
 
 go 1.16
 

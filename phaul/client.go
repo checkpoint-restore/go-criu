@@ -2,10 +2,11 @@ package phaul
 
 import (
 	"fmt"
+	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v5"
-	"github.com/checkpoint-restore/go-criu/v5/rpc"
-	"github.com/checkpoint-restore/go-criu/v5/stats"
+	"github.com/checkpoint-restore/go-criu/v6"
+	"github.com/checkpoint-restore/go-criu/v6/crit"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -32,7 +33,7 @@ func MakePhaulClient(l Local, r Remote, c Config) (*Client, error) {
 	return &Client{local: l, remote: r, cfg: c}, nil
 }
 
-func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStatsEntry) bool {
+func isLastIter(iter int, stats *images.DumpStatsEntry, prevStats *images.DumpStatsEntry) bool {
 	if iter >= maxIters {
 		fmt.Printf("`- max iters reached\n")
 		return true
@@ -56,10 +57,10 @@ func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStat
 // Migrate function
 func (pc *Client) Migrate() error {
 	criu := criu.MakeCriu()
-	psi := rpc.CriuPageServerInfo{
+	psi := images.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
 	}
-	opts := &rpc.CriuOpts{
+	opts := &images.CriuOpts{
 		Pid:      proto.Int32(int32(pc.cfg.Pid)),
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("pre-dump.log"),
@@ -77,7 +78,7 @@ func (pc *Client) Migrate() error {
 	if err != nil {
 		return err
 	}
-	prevStats := &stats.DumpStatsEntry{}
+	prevStats := &images.DumpStatsEntry{}
 	iter := 0
 
 	for {
@@ -110,16 +111,19 @@ func (pc *Client) Migrate() error {
 			return err
 		}
 
-		st, err := stats.CriuGetDumpStats(imgDir)
+		// Get dump statistics with crit
+		c := crit.New(filepath.Join(imgDir.Name(), "stats-dump"), "", "", false, false)
+		statsImg, err := c.Decode()
 		if err != nil {
 			return err
 		}
+		stats := statsImg.Entries[0].Message.(*images.StatsEntry).GetDump()
 
-		if isLastIter(iter, st, prevStats) {
+		if isLastIter(iter, stats, prevStats) {
 			break
 		}
 
-		prevStats = st
+		prevStats = stats
 	}
 
 	err = pc.remote.StartIter()

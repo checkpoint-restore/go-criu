@@ -21,18 +21,6 @@ coverage:
 codecov:
 	$(MAKE) -C test codecov
 
-rpc/rpc.proto:
-	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/rpc.proto -o $@
-
-stats/stats.proto:
-	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/stats.proto -o $@
-
-rpc/rpc.pb.go: rpc/rpc.proto
-	protoc --go_out=. --go_opt=M$^=rpc/ $^
-
-stats/stats.pb.go: stats/stats.proto
-	protoc --go_out=. --go_opt=M$^=stats/ $^
-
 vendor:
 	GO111MODULE=on $(GO) mod tidy
 	GO111MODULE=on $(GO) mod vendor

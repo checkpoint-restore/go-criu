@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/checkpoint-restore/go-criu/v5"
-	"github.com/checkpoint-restore/go-criu/v5/rpc"
+	"github.com/checkpoint-restore/go-criu/v6"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,7 +34,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	}
 	defer img.Close()
 
-	opts := &rpc.CriuOpts{
+	opts := &images.CriuOpts{
 		Pid:         proto.Int32(int32(pid)),
 		ImagesDirFd: proto.Int32(int32(img.Fd())),
 		LogLevel:    proto.Int32(4),
@@ -59,8 +59,8 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 }
 
 func featureCheck(c *criu.Criu) error {
-	features := &rpc.CriuFeatures{}
-	featuresToCompare := &rpc.CriuFeatures{}
+	features := &images.CriuFeatures{}
+	featuresToCompare := &images.CriuFeatures{}
 	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
 	if env != "" {
 		val, err := strconv.Atoi(env)
@@ -176,7 +176,7 @@ func main() {
 		}
 		defer img.Close()
 
-		opts := &rpc.CriuOpts{
+		opts := &images.CriuOpts{
 			ImagesDirFd: proto.Int32(int32(img.Fd())),
 			LogLevel:    proto.Int32(4),
 			LogFile:     proto.String("restore.log"),

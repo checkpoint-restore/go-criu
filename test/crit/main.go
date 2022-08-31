@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/checkpoint-restore/go-criu/v5/crit"
+	"github.com/checkpoint-restore/go-criu/v6/crit"
 )
 
 const TEST_IMG_DIR = "test-imgs"

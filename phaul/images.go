@@ -6,21 +6,21 @@ import (
 	"path/filepath"
 )
 
-type images struct {
+type image struct {
 	cursor int
 	dir    string
 }
 
 //nolint:unparam // suppress "error is always nil" warning
-func preparePhaulImages(wdir string) (*images, error) {
-	return &images{dir: wdir}, nil
+func preparePhaulImages(wdir string) (*image, error) {
+	return &image{dir: wdir}, nil
 }
 
-func (i *images) getPath(idx int) string {
+func (i *image) getPath(idx int) string {
 	return fmt.Sprintf(i.dir+"/%d", idx)
 }
 
-func (i *images) openNextDir() (*os.File, error) {
+func (i *image) openNextDir() (*os.File, error) {
 	ipath := i.getPath(i.cursor)
 	err := os.Mkdir(ipath, 0o700)
 	if err != nil {
@@ -31,7 +31,7 @@ func (i *images) openNextDir() (*os.File, error) {
 	return os.Open(ipath)
 }
 
-func (i *images) lastImagesDir() string {
+func (i *image) lastImagesDir() string {
 	var ret string
 	if i.cursor == 0 {
 		ret = ""

@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/checkpoint-restore/go-criu/v5/crit/images"
-	"github.com/checkpoint-restore/go-criu/v5/magic"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/magic"
 )
 
 // Helper to decode magic name from hex value
