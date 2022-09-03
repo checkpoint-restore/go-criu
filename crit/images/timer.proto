@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 syntax = "proto2";
+package criu;
 
 message itimer_entry {
 	required uint64		isec		= 1;
