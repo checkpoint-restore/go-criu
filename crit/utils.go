@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images"
@@ -112,7 +113,7 @@ func getFilePath(dir string, fId uint32, fType images.FdTypes) (string, error) {
 	var err error
 	// Get open files
 	if filesImg == nil {
-		filesImg, err = getImg(fmt.Sprintf("%s/files.img", dir))
+		filesImg, err = getImg(filepath.Join(dir, "files.img"))
 		if err != nil {
 			return "", err
 		}
@@ -152,7 +153,7 @@ func getRegFilePath(dir string, file *images.FileEntry, fId uint32) (string, err
 	}
 
 	if regImg == nil {
-		regImg, err = getImg(fmt.Sprintf("%s/reg-files.img", dir))
+		regImg, err = getImg(filepath.Join(dir, "reg-files.img"))
 		if err != nil {
 			return "", err
 		}
@@ -178,7 +179,7 @@ func getPipeFilePath(dir string, file *images.FileEntry, fId uint32) (string, er
 	}
 
 	if pipeImg == nil {
-		pipeImg, err = getImg(fmt.Sprintf("%s/pipes.img", dir))
+		pipeImg, err = getImg(filepath.Join(dir, "pipes.img"))
 		if err != nil {
 			return "", err
 		}
@@ -209,7 +210,7 @@ func getUnixSkFilePath(dir string, file *images.FileEntry, fId uint32) (string, 
 	}
 
 	if unixSkImg == nil {
-		unixSkImg, err = getImg(fmt.Sprintf("%s/unixsk.img", dir))
+		unixSkImg, err = getImg(filepath.Join(dir, "unixsk.img"))
 		if err != nil {
 			return "", err
 		}

@@ -2,6 +2,7 @@ package crit
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images"
@@ -20,7 +21,7 @@ type PsTree struct {
 
 // ExplorePs constructs the process tree and returns the root process
 func (c *crit) ExplorePs() (*PsTree, error) {
-	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
 
-		coreImg, err := getImg(fmt.Sprintf("%s/core-%d.img", c.inputDirPath, pId))
+		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +78,7 @@ type File struct {
 // ExploreFds searches the process tree for open files
 // and returns a list of PIDs with the corresponding files
 func (c *crit) ExploreFds() ([]*Fd, error) {
-	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +88,13 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
 		// Get file with object IDs
-		idsImg, err := getImg(fmt.Sprintf("%s/ids-%d.img", c.inputDirPath, pId))
+		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
 		filesId := idsImg.Entries[0].Message.(*images.TaskKobjIdsEntry).GetFilesId()
 		// Get open file descriptors
-		fdInfoImg, err := getImg(fmt.Sprintf("%s/fdinfo-%d.img", c.inputDirPath, filesId))
+		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesId)))
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +114,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			fdEntry.Files = append(fdEntry.Files, &file)
 		}
 		// Get chroot and chdir info
-		fsImg, err := getImg(fmt.Sprintf("%s/fs-%d.img", c.inputDirPath, pId))
+		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +162,7 @@ type Mem struct {
 // ExploreMems traverses the process tree and returns a
 // list of processes with the corresponding memory mapping
 func (c *crit) ExploreMems() ([]*MemMap, error) {
-	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
 		// Get memory mappings
-		mmImg, err := getImg(fmt.Sprintf("%s/mm-%d.img", c.inputDirPath, pId))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +289,7 @@ type Vma struct {
 // ExploreRss traverses the process tree and returns
 // a list of processes with their RSS mappings
 func (c *crit) ExploreRss() ([]*RssMap, error) {
-	psTreeImg, err := getImg(fmt.Sprintf("%s/pstree.img", c.inputDirPath))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
 	if err != nil {
 		return nil, err
 	}
@@ -298,13 +299,13 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 		process := entry.Message.(*images.PstreeEntry)
 		pId := process.GetPid()
 		// Get virtual memory addresses
-		mmImg, err := getImg(fmt.Sprintf("%s/mm-%d.img", c.inputDirPath, pId))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
 		vmas := mmImg.Entries[0].Message.(*images.MmEntry).GetVmas()
 		// Get physical memory addresses
-		pagemapImg, err := getImg(fmt.Sprintf("%s/pagemap-%d.img", c.inputDirPath, pId))
+		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pId)))
 		if err != nil {
 			return nil, err
 		}
