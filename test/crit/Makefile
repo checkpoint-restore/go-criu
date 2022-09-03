@@ -2,7 +2,10 @@ CC ?= gcc
 GO ?= go
 CRIU ?= criu
 
-all: integration-test e2e-test clean
+all: unit-test integration-test e2e-test clean
+
+unit-test: test-imgs
+	go test -v ./...
 
 integration-test: test-imgs crit-test
 	@echo "Running integration test"
@@ -16,6 +19,8 @@ test-imgs: ../loop/loop
 	$(eval PID := $(shell ../loop/loop))
 	mkdir -p $@
 	$(CRIU) dump -v4 -o dump.log -D $@ -t $(PID)
+	$(CRIU) restore -v4 -o restore.log -D $@ -d
+	pkill -9 loop
 
 ../../crit/bin/crit:
 	$(MAKE) -C ../../crit bin/crit
@@ -29,4 +34,4 @@ crit-test: main.go
 clean:
 	@rm -rf test-imgs
 
-.PHONY: all test integration-test e2e-test clean
+.PHONY: all test unit-test integration-test e2e-test clean
