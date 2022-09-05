@@ -17,9 +17,14 @@ update-proto:
 	rm ./images/*.proto || true
 	git clone --depth 1 --branch master https://github.com/checkpoint-restore/criu criu-temp
 	cp criu-temp/images/*.proto ./images/
-	rm -R criu-temp
+	rm -rf criu-temp
+	# To prevent namespace conflicts against protobuf files
+	# from other projects, the files of this repository are
+	# now registered under the package name `criu`.
+	ls ./images/*.proto | xargs sed -i '/syntax/a package criu;'
 
 gen-proto:
+	rm ./images/*.pb.go || true
 	@protoc \
 		--proto_path=$(proto_path) \
 		--go_out=$(proto_path) \
