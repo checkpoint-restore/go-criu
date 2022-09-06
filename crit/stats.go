@@ -7,6 +7,11 @@ import (
 	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 )
 
+const (
+	StatsDump    = "stats-dump"
+	StatsRestore = "stats-restore"
+)
+
 // Helper function to load stats file into Go struct
 func getStats(path string) (*images.StatsEntry, error) {
 	c := New(path, "", "", false, false)
@@ -26,7 +31,7 @@ func getStats(path string) (*images.StatsEntry, error) {
 // GetDumpStats returns the dump statistics of a checkpoint.
 // dir is the path to the directory with the checkpoint images.
 func GetDumpStats(dir string) (*images.DumpStatsEntry, error) {
-	stats, err := getStats(filepath.Join(dir, "stats-dump"))
+	stats, err := getStats(filepath.Join(dir, StatsDump))
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +42,7 @@ func GetDumpStats(dir string) (*images.DumpStatsEntry, error) {
 // GetRestoreStats returns the restore statistics of a checkpoint.
 // dir is the path to the directory with the checkpoint images.
 func GetRestoreStats(dir string) (*images.RestoreStatsEntry, error) {
-	stats, err := getStats(filepath.Join(dir, "stats-restore"))
+	stats, err := getStats(filepath.Join(dir, StatsRestore))
 	if err != nil {
 		return nil, err
 	}
