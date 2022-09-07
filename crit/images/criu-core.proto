@@ -12,7 +12,7 @@ import "core-mips.proto";
 import "rlimit.proto";
 import "timer.proto";
 import "creds.proto";
-import "sa.proto";
+import "criu-sa.proto";
 import "siginfo.proto";
 import "rseq.proto";
 
