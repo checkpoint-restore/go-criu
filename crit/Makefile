@@ -18,13 +18,16 @@ update-proto:
 	git clone --depth 1 --branch master https://github.com/checkpoint-restore/criu criu-temp
 	cp criu-temp/images/*.proto ./images/
 	rm -rf criu-temp
-	# To prevent namespace conflicts against protobuf files
-	# from other projects, the files of this repository are
-	# now registered under the package name `criu`.
-	ls ./images/*.proto | xargs sed -i '/syntax/a package criu;'
+	# To prevent namespace conflict with proto files
+	# in github.com/letsencrypt/boulder, we prepend
+	# a prefix to the filenames.
+	mv ./images/sa.proto ./images/criu-sa.proto
+	sed -i 's/sa\.proto/criu-sa\.proto/g' images/*.proto
+	mv ./images/core.proto ./images/criu-core.proto
+	sed -i 's/core\.proto/criu-core\.proto/g' images/*.proto
 
 gen-proto:
-	rm ./images/*.pb.go || true
+	rm -f ./images/*.pb.go
 	@protoc \
 		--proto_path=$(proto_path) \
 		--go_out=$(proto_path) \
