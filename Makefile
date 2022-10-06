@@ -7,7 +7,7 @@ all: build
 lint:
 	golangci-lint run ./...
 
-build: rpc/rpc.pb.go
+build: rpc/rpc.pb.go stats/stats.pb.go
 	$(GO) build -v ./...
 	# Build crit binary
 	$(MAKE) -C crit bin/crit
@@ -26,6 +26,12 @@ rpc/rpc.proto:
 
 rpc/rpc.pb.go: rpc/rpc.proto
 	protoc --go_out=. --go_opt=M$^=rpc/ $^
+
+stats/stats.proto:
+	curl -sSL https://raw.githubusercontent.com/checkpoint-restore/criu/master/images/stats.proto -o $@
+
+stats/stats.pb.go: stats/stats.proto
+	protoc --go_out=. --go_opt=M$^=stats/ $^
 
 vendor:
 	GO111MODULE=on $(GO) mod tidy
