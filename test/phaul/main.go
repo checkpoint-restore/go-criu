@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/checkpoint-restore/go-criu/v6"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	"github.com/checkpoint-restore/go-criu/v6/phaul"
+	"github.com/checkpoint-restore/go-criu/v6/rpc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -100,7 +100,7 @@ func (r *testRemote) doRestore() error {
 	}
 	defer imgDir.Close()
 
-	opts := &images.CriuOpts{
+	opts := &rpc.CriuOpts{
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("restore.log"),
 		ImagesDirFd: proto.Int32(int32(imgDir.Fd())),
@@ -124,11 +124,11 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 	}
 	defer imgDir.Close()
 
-	psi := images.CriuPageServerInfo{
+	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(cfg.Memfd)),
 	}
 
-	opts := &images.CriuOpts{
+	opts := &rpc.CriuOpts{
 		Pid:         proto.Int32(int32(cfg.Pid)),
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("dump.log"),
