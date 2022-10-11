@@ -7,6 +7,7 @@ import (
 	"github.com/checkpoint-restore/go-criu/v6"
 	"github.com/checkpoint-restore/go-criu/v6/crit"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/rpc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,10 +58,10 @@ func isLastIter(iter int, stats *images.DumpStatsEntry, prevStats *images.DumpSt
 // Migrate function
 func (pc *Client) Migrate() error {
 	criu := criu.MakeCriu()
-	psi := images.CriuPageServerInfo{
+	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
 	}
-	opts := &images.CriuOpts{
+	opts := &rpc.CriuOpts{
 		Pid:      proto.Int32(int32(pc.cfg.Pid)),
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("pre-dump.log"),

@@ -17,7 +17,8 @@ update-proto:
 	rm ./images/*.proto || true
 	git clone --depth 1 --branch master https://github.com/checkpoint-restore/criu criu-temp
 	cp criu-temp/images/*.proto ./images/
-	rm -rf criu-temp
+	# rpc.proto is not an image and it is used only to communicate criu-service and swrk.
+	rm -rf criu-temp images/rpc.proto
 	# To prevent namespace conflict with proto files
 	# in github.com/letsencrypt/boulder, we prepend
 	# a prefix to the filenames.

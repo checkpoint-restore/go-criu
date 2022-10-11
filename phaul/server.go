@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v6"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/rpc"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 )
@@ -37,10 +37,10 @@ func MakePhaulServer(c Config) (*Server, error) {
 // StartIter phaul.Remote methods
 func (s *Server) StartIter() error {
 	fmt.Printf("S: start iter\n")
-	psi := images.CriuPageServerInfo{
+	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(s.cfg.Memfd)),
 	}
-	opts := &images.CriuOpts{
+	opts := &rpc.CriuOpts{
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("ps.log"),
 		Ps:       &psi,
