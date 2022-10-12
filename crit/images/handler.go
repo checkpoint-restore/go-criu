@@ -113,8 +113,6 @@ func ProtoHandler(magic string) (proto.Message, error) {
 		return &SignalfdEntry{}, nil
 	case "SK_QUEUES":
 		return &SkPacketEntry{}, nil
-	case "STATS":
-		return &StatsEntry{}, nil
 	case "TCP_STREAM":
 		return &TcpStreamEntry{}, nil
 	case "TIMENS":
