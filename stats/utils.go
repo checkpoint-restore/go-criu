@@ -3,7 +3,6 @@ package stats
 import (
 	"encoding/binary"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func readStatisticsFile(imgDir *os.File, fileName string) (*StatsEntry, error) {
-	buf, err := ioutil.ReadFile(filepath.Join(imgDir.Name(), fileName))
+	buf, err := os.ReadFile(filepath.Join(imgDir.Name(), fileName))
 	if err != nil {
 		return nil, err
 	}

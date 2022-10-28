@@ -11,12 +11,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// The crit service used to invoke all commands
-var c crit.CritSvc
+var (
+	// The crit service used to invoke all commands
+	c crit.CritSvc
 
-// All members needed for crit struct
-var inputFilePath, outputFilePath, inputDirPath string
-var pretty, noPayload bool
+	// All members needed for crit struct
+	inputFilePath  string
+	outputFilePath string
+	inputDirPath   string
+	pretty         bool
+	noPayload      bool
+)
 
 // The `crit` command
 var rootCmd = &cobra.Command{
