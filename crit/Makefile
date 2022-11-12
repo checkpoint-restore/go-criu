@@ -10,12 +10,13 @@ proto_files := $(sort $(subst $(proto_path)/,,$(wildcard $(proto_path)/*.proto))
 # and replace all spaces with commas to use with go_opt flag
 comma := ,
 proto_opts := $(subst $() $(),$(comma),$(patsubst %,M%=$(import_path),$(proto_files)))
+GIT_BRANCH := master
 
 all: gen-proto bin/crit
 
 update-proto:
 	rm ./images/*.proto || true
-	git clone --depth 1 --branch master https://github.com/checkpoint-restore/criu criu-temp
+	git clone --depth 1 --branch $(GIT_BRANCH) https://github.com/checkpoint-restore/criu criu-temp
 	cp criu-temp/images/*.proto ./images/
 	# rpc.proto is not an image and it is used only to communicate criu-service and swrk.
 	rm -rf criu-temp images/rpc.proto
@@ -38,4 +39,7 @@ gen-proto:
 bin/crit: cmd/cli.go
 	$(GO) build -o $@ $^
 
-.PHONY: all gen-proto update-proto
+clean:
+	rm -f bin/crit
+
+.PHONY: all gen-proto update-proto clean

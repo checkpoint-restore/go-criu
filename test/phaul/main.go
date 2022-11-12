@@ -143,7 +143,11 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 }
 
 func main() {
-	pid, _ := strconv.Atoi(os.Args[1])
+	pid, err := strconv.ParseInt(os.Args[1], 10, 32)
+	if err != nil {
+		fmt.Printf("Can't parse pid: %v\n", err)
+		os.Exit(1)
+	}
 	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		fmt.Printf("Can't make socketpair: %v\n", err)
@@ -159,7 +163,7 @@ func main() {
 
 	fmt.Printf("Make server part (socket %d)\n", fds[1])
 	srv, err := phaul.MakePhaulServer(phaul.Config{
-		Pid:   pid,
+		Pid:   int32(pid),
 		Memfd: fds[1],
 		Wdir:  imagesDir + "/remote",
 	})
@@ -174,7 +178,7 @@ func main() {
 	fmt.Printf("Make client part (socket %d)\n", fds[0])
 	cln, err := phaul.MakePhaulClient(&testLocal{r: r}, srv,
 		phaul.Config{
-			Pid:   pid,
+			Pid:   int32(pid),
 			Memfd: fds[0],
 			Wdir:  imagesDir + "/local",
 		})
