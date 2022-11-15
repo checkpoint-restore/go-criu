@@ -10,7 +10,7 @@ import (
 // Memfd is the file descriptor via which criu can transfer memory pages.
 // Wdir is the directory where phaul can put images and other stuff
 type Config struct {
-	Pid   int
+	Pid   int32
 	Memfd int
 	Wdir  string
 }

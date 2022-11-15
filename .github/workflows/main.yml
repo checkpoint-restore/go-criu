@@ -4,14 +4,12 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         go-version: [1.17.x, 1.18.x, 1.19.x]
-        # criu is pre-installed in the Ubuntu 20.04 GitHub Action virtual
-        # environment as a dependency for Podman
-        criu_branch: ["", criu-dev]
+        criu_branch: [master, criu-dev]
 
     steps:
 
@@ -19,9 +17,8 @@ jobs:
       uses: actions/checkout@v3
 
     - name: build criu ${{ matrix.criu_branch }}
-      if: matrix.criu_branch != ''
       run: |
-        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python-protobuf libnl-3-dev libnet-dev libcap-dev
+        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev curl unzip
         git clone --depth=1 --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
@@ -37,11 +34,27 @@ jobs:
     - name: Test magicgen script
       run: make -C scripts test
 
+    - name: Install protoc-gen-go
+      run: |
+        sudo env "GOBIN=/usr/bin" go install github.com/golang/protobuf/protoc-gen-go@latest
+
     - name: Test crit
-      run: sudo make -C test crit-test
+      run: |
+        if [ "${{ matrix.criu_branch }}" = "criu-dev" ]; then
+          # We need to use the protobuf definitions from the criu-dev
+          # branch as it might have changed.
+          make -C crit update-proto GIT_BRANCH=${{ matrix.criu_branch }}
+          # First update protobuf. It is too old in the Ubuntu image.
+          curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
+          sudo unzip -o protoc.zip -d /usr
+          sudo make -C crit clean
+          make -C crit gen-proto
+          sudo make -C crit all
+        fi
+        sudo make -C test crit-test
 
     - name: Check code coverage
-      if: matrix.go-version == '1.18.x' && matrix.criu_branch == 'criu-dev'
+      if: matrix.go-version == '1.19.x' && matrix.criu_branch == 'criu-dev'
       run: |
         # Run actual test as root as it uses CRIU.
         sudo env "PATH=$PATH" make coverage
