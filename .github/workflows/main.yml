@@ -28,15 +28,15 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
 
+    - name: Install protoc-gen-go
+      run: |
+        sudo env "GOBIN=/usr/bin" go install github.com/golang/protobuf/protoc-gen-go@latest
+
     - name: Test go-criu
       run: sudo env "PATH=$PATH" make test
 
     - name: Test magicgen script
       run: make -C scripts test
-
-    - name: Install protoc-gen-go
-      run: |
-        sudo env "GOBIN=/usr/bin" go install github.com/golang/protobuf/protoc-gen-go@latest
 
     - name: Test crit
       run: |
