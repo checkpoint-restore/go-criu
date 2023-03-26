@@ -44,7 +44,7 @@ jobs:
       run: sudo -E make test
 
     - name: Test magicgen script
-      run: sudo -E make -C scripts test
+      run: make -C scripts/magic-gen test
 
     - name: Test CRIT
       run: |
