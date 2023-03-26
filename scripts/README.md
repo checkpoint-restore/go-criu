@@ -5,7 +5,20 @@ CRIU uses a 32-bit integer value to determine the type of image file. These valu
 
 `Usage: magicgen.go /path/to/magic.h /path/to/magic.go`
 
-A set of Makefile targets are provided for convenience:
+Makefile targets provided:
+
 - `make` or `make magic-gen`: Generate `../magic/magic.go`
 - `make test`: Run unit test and E2E test for `magicgen.go`
 - `make clean`: Remove `../magic/magic.go` and `magic.h`
+
+## `proto-gen`
+CRIT uses protobuf bindings to serialise and deserialise CRIU image files. The definitions for these bindings are available in [criu/images](https://github.com/checkpoint-restore/criu/tree/master/images). `protogen.py` fetches these definitions and generates the `.pb.go` files used by CRIT. If the source or destination directory is not provided, the script uses `../crit/images` by default.
+
+`Usage: protogen.py /path/to/definitions/dir /path/to/destination/dir`
+
+Makefile targets provided:
+
+- `make` or `make pb-gen`: Generate the `.pb.go` bindings
+- `make proto-update`: Update the `.proto` files with the latest copy from the CRIU repo. The GIT_BRANCH variable can be used to specify the branch to fetch the files from.
+- `make clean-proto`: Delete all `.proto` bindings
+- `make clean-pb`: Delete all `.pb.go` bindings
