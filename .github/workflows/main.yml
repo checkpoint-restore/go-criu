@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.17.x, 1.18.x, 1.19.x]
+        go-version: [1.18.x, 1.19.x, 1.20.x]
         criu_branch: [master, criu-dev]
 
     steps:
@@ -24,7 +24,7 @@ jobs:
         sudo make -C criu install-criu PREFIX=/usr
 
     - name: install go ${{ matrix.go-version }}
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
 
@@ -33,10 +33,10 @@ jobs:
         sudo env "GOBIN=/usr/bin" go install github.com/golang/protobuf/protoc-gen-go@latest
 
     - name: Test go-criu
-      run: sudo env "PATH=$PATH" make test
+      run: sudo -E make test
 
     - name: Test magicgen script
-      run: make -C scripts test
+      run: sudo -E make -C scripts test
 
     - name: Test crit
       run: |
@@ -47,16 +47,16 @@ jobs:
           # First update protobuf. It is too old in the Ubuntu image.
           curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
           sudo unzip -o protoc.zip -d /usr
-          sudo make -C crit clean
+          sudo -E make -C crit clean
           make -C crit gen-proto
-          sudo make -C crit all
+          sudo -E make -C crit all
         fi
-        sudo make -C test crit-test
+        sudo -E make -C test crit-test
 
     - name: Check code coverage
-      if: matrix.go-version == '1.19.x' && matrix.criu_branch == 'criu-dev'
+      if: matrix.go-version == '1.20.x' && matrix.criu_branch == 'criu-dev'
       run: |
         # Run actual test as root as it uses CRIU.
-        sudo env "PATH=$PATH" make coverage
+        sudo -E make coverage
         # Upload coverage results to codecov
         sudo -E make codecov
