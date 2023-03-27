@@ -3,7 +3,7 @@ on: [ push, pull_request ]
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - uses: golangci/golangci-lint-action@v3
@@ -13,10 +13,29 @@ jobs:
         only-new-issues: true
 
   gomod:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: verify go.mod/go.sum
       run: |
         go mod tidy
         git diff --exit-code
+
+  lint_markdown:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          md:
+            - 'README.md'
+    - name: Lint markdown
+      if: steps.changes.outputs.md == 'true'
+      uses: DavidAnson/markdownlint-cli2-action@v9
+      with:
+        globs: |
+          README.md
