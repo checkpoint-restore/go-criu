@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -120,7 +122,7 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 // Special handler for ghost image
 func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	// Process primary entry
-	entry := CriuEntry{Message: &images.GhostFileEntry{}}
+	entry := CriuEntry{Message: &ghost_file.GhostFileEntry{}}
 	jsonPayload, extraPayload := splitJSONData(imgData.JSONEntries[0])
 	if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 		return err
@@ -135,7 +137,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 
 	// Process chunks
 	for _, data := range imgData.JSONEntries[1:] {
-		entry = CriuEntry{Message: &images.GhostChunkEntry{}}
+		entry = CriuEntry{Message: &ghost_file.GhostChunkEntry{}}
 		jsonPayload, extraPayload = splitJSONData(data)
 		if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 			return err
@@ -150,7 +152,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 // Special handler for pagemap image
 func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	// First entry is pagemap head
-	var payload proto.Message = &images.PagemapHead{}
+	var payload proto.Message = &pagemap.PagemapHead{}
 	for _, data := range imgData.JSONEntries {
 		entry := CriuEntry{Message: payload}
 		if err := protojson.Unmarshal(data, entry.Message); err != nil {
@@ -158,7 +160,7 @@ func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 		}
 		img.Entries = append(img.Entries, &entry)
 		// Create struct for next entry
-		payload = &images.PagemapEntry{}
+		payload = &pagemap.PagemapEntry{}
 	}
 
 	return nil

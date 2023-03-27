@@ -8,9 +8,9 @@ import (
 	"os"
 )
 
-// CritSvc is the interface that wraps all CRIT operations.
+// Critter is the interface that wraps all CRIT operations.
 // To create a CRIT service instance, use New().
-type CritSvc interface {
+type Critter interface {
 	// Read binary image file into Go struct (decode.go)
 	Decode() (*CriuImage, error)
 	// Read only counts of image file entries into Go struct
@@ -26,7 +26,7 @@ type CritSvc interface {
 	ExploreRss() ([]*RssMap, error)
 }
 
-// crit implements the CritSvc interface. It contains:
+// crit implements the Critter interface. It contains:
 // * Path of the input file
 // * Path of the output file
 // * Path of the input directory (for `crit explore`)
@@ -48,7 +48,7 @@ func New(
 	inputFilePath, outputFilePath,
 	inputDirPath string,
 	pretty, noPayload bool,
-) CritSvc {
+) Critter {
 	return &crit{
 		inputFilePath:  inputFilePath,
 		outputFilePath: outputFilePath,
@@ -66,7 +66,7 @@ func NewCli(
 	inputFilePath, outputFilePath,
 	inputDirPath string,
 	pretty, noPayload bool,
-) CritSvc {
+) Critter {
 	return &crit{
 		inputFilePath:  inputFilePath,
 		outputFilePath: outputFilePath,

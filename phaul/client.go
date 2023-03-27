@@ -6,7 +6,7 @@ import (
 
 	"github.com/checkpoint-restore/go-criu/v6"
 	"github.com/checkpoint-restore/go-criu/v6/crit"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
 	"github.com/checkpoint-restore/go-criu/v6/rpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,7 +34,7 @@ func MakePhaulClient(l Local, r Remote, c Config) (*Client, error) {
 	return &Client{local: l, remote: r, cfg: c}, nil
 }
 
-func isLastIter(iter int, stats *images.DumpStatsEntry, prevStats *images.DumpStatsEntry) bool {
+func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStatsEntry) bool {
 	if iter >= maxIters {
 		fmt.Printf("`- max iters reached\n")
 		return true
@@ -79,7 +79,7 @@ func (pc *Client) Migrate() error {
 	if err != nil {
 		return err
 	}
-	prevStats := &images.DumpStatsEntry{}
+	prevStats := &stats.DumpStatsEntry{}
 	iter := 0
 
 	for {
@@ -118,7 +118,7 @@ func (pc *Client) Migrate() error {
 		if err != nil {
 			return err
 		}
-		stats := statsImg.Entries[0].Message.(*images.StatsEntry).GetDump()
+		stats := statsImg.Entries[0].Message.(*stats.StatsEntry).GetDump()
 
 		if isLastIter(iter, stats, prevStats) {
 			break

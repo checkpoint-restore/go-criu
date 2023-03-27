@@ -4,7 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
 )
 
 const (
@@ -13,14 +13,14 @@ const (
 )
 
 // Helper function to load stats file into Go struct
-func getStats(path string) (*images.StatsEntry, error) {
+func getStats(path string) (*stats.StatsEntry, error) {
 	c := New(path, "", "", false, false)
 	statsImg, err := c.Decode()
 	if err != nil {
 		return nil, err
 	}
 
-	stats, ok := statsImg.Entries[0].Message.(*images.StatsEntry)
+	stats, ok := statsImg.Entries[0].Message.(*stats.StatsEntry)
 	if !ok {
 		return nil, errors.New("failed to type assert stats image")
 	}
@@ -30,7 +30,7 @@ func getStats(path string) (*images.StatsEntry, error) {
 
 // GetDumpStats returns the dump statistics of a checkpoint.
 // dir is the path to the directory with the checkpoint images.
-func GetDumpStats(dir string) (*images.DumpStatsEntry, error) {
+func GetDumpStats(dir string) (*stats.DumpStatsEntry, error) {
 	stats, err := getStats(filepath.Join(dir, StatsDump))
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func GetDumpStats(dir string) (*images.DumpStatsEntry, error) {
 
 // GetRestoreStats returns the restore statistics of a checkpoint.
 // dir is the path to the directory with the checkpoint images.
-func GetRestoreStats(dir string) (*images.RestoreStatsEntry, error) {
+func GetRestoreStats(dir string) (*stats.RestoreStatsEntry, error) {
 	stats, err := getStats(filepath.Join(dir, StatsRestore))
 	if err != nil {
 		return nil, err

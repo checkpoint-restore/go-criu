@@ -13,7 +13,7 @@ import (
 
 var (
 	// The crit service used to invoke all commands
-	c crit.CritSvc
+	c crit.Critter
 
 	// All members needed for crit struct
 	inputFilePath  string

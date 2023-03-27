@@ -3,139 +3,192 @@ package images
 import (
 	"fmt"
 
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/apparmor"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/autofs"
+	binfmt_misc "github.com/checkpoint-restore/go-criu/v6/crit/images/binfmt-misc"
+	bpfmap_data "github.com/checkpoint-restore/go-criu/v6/crit/images/bpfmap-data"
+	bpfmap_file "github.com/checkpoint-restore/go-criu/v6/crit/images/bpfmap-file"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/cgroup"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/cpuinfo"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/creds"
+	criu_core "github.com/checkpoint-restore/go-criu/v6/crit/images/criu-core"
+	criu_sa "github.com/checkpoint-restore/go-criu/v6/crit/images/criu-sa"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/eventfd"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/eventpoll"
+	ext_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ext-file"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/fdinfo"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/fh"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/fifo"
+	file_lock "github.com/checkpoint-restore/go-criu/v6/crit/images/file-lock"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/fs"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/fsnotify"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/inventory"
+	ipc_msg "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-msg"
+	ipc_sem "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-sem"
+	ipc_shm "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-shm"
+	ipc_var "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-var"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/memfd"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/mm"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/mnt"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/netdev"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/ns"
+	packet_sock "github.com/checkpoint-restore/go-criu/v6/crit/images/packet-sock"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pidns"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pipe"
+	pipe_data "github.com/checkpoint-restore/go-criu/v6/crit/images/pipe-data"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pstree"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/regfile"
+	remap_file_path "github.com/checkpoint-restore/go-criu/v6/crit/images/remap-file-path"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/rlimit"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/seccomp"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/signalfd"
+	sk_inet "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-inet"
+	sk_netlink "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-netlink"
+	sk_packet "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-packet"
+	sk_unix "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-unix"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
+	tcp_stream "github.com/checkpoint-restore/go-criu/v6/crit/images/tcp-stream"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/timens"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/timer"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/timerfd"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/tty"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/tun"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/userns"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/utsns"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/vma"
 	"google.golang.org/protobuf/proto"
 )
 
 func ProtoHandler(magic string) (proto.Message, error) {
 	switch magic {
 	case "APPARMOR":
-		return &ApparmorEntry{}, nil
+		return &apparmor.ApparmorEntry{}, nil
 	case "AUTOFS":
-		return &AutofsEntry{}, nil
+		return &autofs.AutofsEntry{}, nil
 	case "BINFMT_MISC":
-		return &BinfmtMiscEntry{}, nil
+		return &binfmt_misc.BinfmtMiscEntry{}, nil
 	case "BPFMAP_DATA":
-		return &BpfmapDataEntry{}, nil
+		return &bpfmap_data.BpfmapDataEntry{}, nil
 	case "BPFMAP_FILE":
-		return &BpfmapFileEntry{}, nil
+		return &bpfmap_file.BpfmapFileEntry{}, nil
 	case "CGROUP":
-		return &CgroupEntry{}, nil
+		return &cgroup.CgroupEntry{}, nil
 	case "CORE":
-		return &CoreEntry{}, nil
+		return &criu_core.CoreEntry{}, nil
 	case "CPUINFO":
-		return &CpuinfoEntry{}, nil
+		return &cpuinfo.CpuinfoEntry{}, nil
 	case "CREDS":
-		return &CredsEntry{}, nil
+		return &creds.CredsEntry{}, nil
 	case "EVENTFD_FILE":
-		return &EventfdFileEntry{}, nil
+		return &eventfd.EventfdFileEntry{}, nil
 	case "EVENTPOLL_FILE":
-		return &EventpollFileEntry{}, nil
+		return &eventpoll.EventpollFileEntry{}, nil
 	case "EVENTPOLL_TFD":
-		return &EventpollTfdEntry{}, nil
+		return &eventpoll.EventpollTfdEntry{}, nil
 	case "EXT_FILES":
-		return &ExtFileEntry{}, nil
+		return &ext_file.ExtFileEntry{}, nil
 	case "FANOTIFY_FILE":
-		return &FanotifyFileEntry{}, nil
+		return &fsnotify.FanotifyFileEntry{}, nil
 	case "FANOTIFY_MARK":
-		return &FanotifyMarkEntry{}, nil
+		return &fsnotify.FanotifyMarkEntry{}, nil
 	case "FDINFO":
-		return &FdinfoEntry{}, nil
+		return &fdinfo.FdinfoEntry{}, nil
 	case "FIFO":
-		return &FifoEntry{}, nil
+		return &fifo.FifoEntry{}, nil
 	case "FIFO_DATA":
-		return &PipeDataEntry{}, nil
+		return &pipe_data.PipeDataEntry{}, nil
 	case "FILES":
-		return &FileEntry{}, nil
+		return &fdinfo.FileEntry{}, nil
 	case "FILE_LOCKS":
-		return &FileLockEntry{}, nil
+		return &file_lock.FileLockEntry{}, nil
 	case "FS":
-		return &FsEntry{}, nil
+		return &fs.FsEntry{}, nil
 	case "IDS":
-		return &TaskKobjIdsEntry{}, nil
+		return &criu_core.TaskKobjIdsEntry{}, nil
 	case "INETSK":
-		return &InetSkEntry{}, nil
+		return &sk_inet.InetSkEntry{}, nil
 	case "INOTIFY_FILE":
-		return &InotifyFileEntry{}, nil
+		return &fsnotify.InotifyFileEntry{}, nil
 	case "INOTIFY_WD":
-		return &InotifyWdEntry{}, nil
+		return &fsnotify.InotifyWdEntry{}, nil
 	case "INVENTORY":
-		return &InventoryEntry{}, nil
+		return &inventory.InventoryEntry{}, nil
 	case "IPCNS_MSG":
-		return &IpcMsgEntry{}, nil
+		return &ipc_msg.IpcMsgEntry{}, nil
 	case "IPCNS_SEM":
-		return &IpcSemEntry{}, nil
+		return &ipc_sem.IpcSemEntry{}, nil
 	case "IPCNS_SHM":
-		return &IpcShmEntry{}, nil
+		return &ipc_shm.IpcShmEntry{}, nil
 	case "IPC_VAR":
-		return &IpcVarEntry{}, nil
+		return &ipc_var.IpcVarEntry{}, nil
 	case "IRMAP_CACHE":
-		return &IrmapCacheEntry{}, nil
+		return &fh.IrmapCacheEntry{}, nil
 	case "ITIMERS":
-		return &ItimerEntry{}, nil
+		return &timer.ItimerEntry{}, nil
 	case "MEMFD_INODE":
-		return &MemfdInodeEntry{}, nil
+		return &memfd.MemfdInodeEntry{}, nil
 	case "MM":
-		return &MmEntry{}, nil
+		return &mm.MmEntry{}, nil
 	case "MNTS":
-		return &MntEntry{}, nil
+		return &mnt.MntEntry{}, nil
 	case "NETDEV":
-		return &NetDeviceEntry{}, nil
+		return &netdev.NetDeviceEntry{}, nil
 	case "NETLINK_SK":
-		return &NetlinkSkEntry{}, nil
+		return &sk_netlink.NetlinkSkEntry{}, nil
 	case "NETNS":
-		return &NetnsEntry{}, nil
+		return &netdev.NetnsEntry{}, nil
 	case "NS_FILES":
-		return &NsFileEntry{}, nil
+		return &ns.NsFileEntry{}, nil
 	case "PACKETSK":
-		return &PacketSockEntry{}, nil
+		return &packet_sock.PacketSockEntry{}, nil
 	case "PIDNS":
-		return &PidnsEntry{}, nil
+		return &pidns.PidnsEntry{}, nil
 	case "PIPES":
-		return &PipeEntry{}, nil
+		return &pipe.PipeEntry{}, nil
 	case "PIPES_DATA":
-		return &PipeDataEntry{}, nil
+		return &pipe_data.PipeDataEntry{}, nil
 	case "POSIX_TIMERS":
-		return &PosixTimerEntry{}, nil
+		return &timer.PosixTimerEntry{}, nil
 	case "PSTREE":
-		return &PstreeEntry{}, nil
+		return &pstree.PstreeEntry{}, nil
 	case "REG_FILES":
-		return &RegFileEntry{}, nil
+		return &regfile.RegFileEntry{}, nil
 	case "REMAP_FPATH":
-		return &RemapFilePathEntry{}, nil
+		return &remap_file_path.RemapFilePathEntry{}, nil
 	case "RLIMIT":
-		return &RlimitEntry{}, nil
+		return &rlimit.RlimitEntry{}, nil
 	case "SECCOMP":
-		return &SeccompEntry{}, nil
+		return &seccomp.SeccompEntry{}, nil
 	case "SIGACT":
-		return &SaEntry{}, nil
+		return &criu_sa.SaEntry{}, nil
 	case "SIGNALFD":
-		return &SignalfdEntry{}, nil
+		return &signalfd.SignalfdEntry{}, nil
 	case "SK_QUEUES":
-		return &SkPacketEntry{}, nil
+		return &sk_packet.SkPacketEntry{}, nil
 	case "STATS":
-		return &StatsEntry{}, nil
+		return &stats.StatsEntry{}, nil
 	case "TCP_STREAM":
-		return &TcpStreamEntry{}, nil
+		return &tcp_stream.TcpStreamEntry{}, nil
 	case "TIMENS":
-		return &TimensEntry{}, nil
+		return &timens.TimensEntry{}, nil
 	case "TIMERFD":
-		return &TimerfdEntry{}, nil
+		return &timerfd.TimerfdEntry{}, nil
 	case "TTY_DATA":
-		return &TtyDataEntry{}, nil
+		return &tty.TtyDataEntry{}, nil
 	case "TTY_FILES":
-		return &TtyFileEntry{}, nil
+		return &tty.TtyFileEntry{}, nil
 	case "TTY_INFO":
-		return &TtyInfoEntry{}, nil
+		return &tty.TtyInfoEntry{}, nil
 	case "TUNFILE":
-		return &TunfileEntry{}, nil
+		return &tun.TunfileEntry{}, nil
 	case "UNIXSK":
-		return &UnixSkEntry{}, nil
+		return &sk_unix.UnixSkEntry{}, nil
 	case "USERNS":
-		return &UsernsEntry{}, nil
+		return &userns.UsernsEntry{}, nil
 	case "UTSNS":
-		return &UtsnsEntry{}, nil
+		return &utsns.UtsnsEntry{}, nil
 	case "VMAS":
-		return &VmaEntry{}, nil
+		return &vma.VmaEntry{}, nil
 	}
 	return nil, fmt.Errorf("no handler found for magic 0x%x", magic)
 }
