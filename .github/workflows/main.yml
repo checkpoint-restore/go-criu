@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
 
     - name: Install protoc-gen-go
       run: |
-        sudo env "GOBIN=/usr/bin" go install github.com/golang/protobuf/protoc-gen-go@latest
+        sudo env "GOBIN=/usr/bin" go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
     - name: Test go-criu
       run: sudo -E make test
