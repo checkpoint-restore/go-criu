@@ -13,20 +13,20 @@ jobs:
 
     steps:
 
-    - name: checkout
+    - name: Checkout
       uses: actions/checkout@v3
       with:
         # needed for codecov
         fetch-depth: 0
 
-    - name: build criu ${{ matrix.criu_branch }}
+    - name: Build CRIU ${{ matrix.criu_branch }}
       run: |
         sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev curl unzip
         git clone --depth=1 --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
-    - name: install go ${{ matrix.go-version }}
+    - name: Install Go ${{ matrix.go-version }}
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
@@ -41,7 +41,7 @@ jobs:
     - name: Test magicgen script
       run: sudo -E make -C scripts test
 
-    - name: Test crit
+    - name: Test CRIT
       run: |
         if [ "${{ matrix.criu_branch }}" = "criu-dev" ]; then
           # We need to use the protobuf definitions from the criu-dev
