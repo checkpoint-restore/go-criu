@@ -15,8 +15,8 @@ COVERAGE_BINARIES := test.coverage phaul/phaul.coverage
 all: $(TEST_BINARIES) phaul-test
 	mkdir -p image
 	PID=$$(piggie/piggie) && { \
-	test dump $$PID image && \
-	test restore image; \
+	./test dump $$PID image && \
+	./test restore image; \
 	pkill -9 piggie; \
 	}
 	rm -rf image
