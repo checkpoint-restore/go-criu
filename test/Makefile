@@ -61,22 +61,22 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
 	PID=$$(piggie/piggie) && { \
-	./test.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE dump $$PID image && \
-	./test.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE restore image; \
+	./test.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE dump $$PID image && \
+	./test.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE restore image; \
 	pkill -9 piggie; \
 	}
 	rm -rf image
 	PID=$$(piggie/piggie) && { \
-	phaul/phaul.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE $$PID; \
+	phaul/phaul.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE $$PID; \
 	pkill -9 piggie; \
 	}
-	echo "mode: set" > .coverage/coverage.out && cat .coverage/coverprofile* | \
-		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> .coverage/coverage.out
+	echo "mode: set" > ${COVERAGE_PATH}/coverage.out && cat ${COVERAGE_PATH}/coverprofile* | \
+		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> ${COVERAGE_PATH}/coverage.out
 
 codecov:
 	curl -Os https://uploader.codecov.io/latest/linux/codecov
 	chmod +x codecov
-	./codecov -f '.coverage/coverage.out'
+	./codecov -f ${COVERAGE_PATH}/coverage.out
 
 clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
