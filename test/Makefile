@@ -7,6 +7,7 @@ CRIU_FEATURE_LAZY_PAGES = $(shell if criu check --feature uffd-noncoop > /dev/nu
 CRIU_FEATURE_PIDFD_STORE = $(shell if criu check --feature pidfd_store > /dev/null; then echo 1; else echo 0; fi)
 
 export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE
+export GOCOVERDIR=$(COVERAGE_PATH)
 
 TEST_PAYLOAD := piggie/piggie
 TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul
