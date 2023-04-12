@@ -61,7 +61,7 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
 	PID=$$(piggie/piggie) && { \
-	./test.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE dump $$PID image && \
+	./test.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE dump $$PID image || echo ">> Dump exit code $$?"; \
 	./test.coverage -test.v -test.coverprofile=${COVERAGE_PATH}/coverprofile.integration.$$RANDOM COVERAGE restore image; \
 	pkill -9 piggie; \
 	}
