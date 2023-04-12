@@ -60,13 +60,13 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
 	PID=$$(piggie/piggie) && { \
-	./test.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE dump $$PID image && \
-	./test.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE restore image; \
+	./test.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE dump $$PID image && \
+	./test.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE restore image; \
 	pkill -9 piggie; \
 	}
 	rm -rf image
 	PID=$$(piggie/piggie) && { \
-	phaul/phaul.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE $$PID; \
+	phaul/phaul.coverage -test.v -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE $$PID; \
 	pkill -9 piggie; \
 	}
 	echo "mode: set" > .coverage/coverage.out && cat .coverage/coverprofile* | \
