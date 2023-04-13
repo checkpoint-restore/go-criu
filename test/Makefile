@@ -58,42 +58,37 @@ phaul-test: $(TEST_BINARIES)
 crit-test:
 	$(MAKE) -C crit
 
-test.coverage: *.go
-	$(GO) test \
-		-covermode=count \
-		-coverpkg=./... \
-		-mod=vendor \
-		-tags coverage \
-		-buildmode=pie -c -o $@ $^
+test.coverage: check-go-version *.go
+	$(GO) build \
+		-cover \
+		-o $@ main.go
 
-phaul/phaul.coverage: phaul/*.go
-	$(GO) test \
-		-covermode=count \
-		-coverpkg=./... \
-		-mod=vendor \
-		-tags coverage \
-		-buildmode=pie -c -o $@ $^
+phaul/phaul.coverage: check-go-version phaul/*.go
+	$(GO) build \
+		-cover \
+		-o $@ phaul/main.go
 
-coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
+coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
 	PID=$$(piggie/piggie) && { \
-	./test.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE dump $$PID image && \
-	./test.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE restore image; \
+	GOCOVERDIR=${COVERAGE_PATH} ./test.coverage dump $$PID image && \
+	GOCOVERDIR=${COVERAGE_PATH} ./test.coverage restore image; \
 	pkill -9 piggie; \
 	}
 	rm -rf image
 	PID=$$(piggie/piggie) && { \
-	phaul/phaul.coverage -test.coverprofile=coverprofile.integration.$$RANDOM -test.outputdir=${COVERAGE_PATH} COVERAGE $$PID; \
+	GOCOVERDIR=${COVERAGE_PATH} phaul/phaul.coverage $$PID; \
 	pkill -9 piggie; \
 	}
-	echo "mode: set" > .coverage/coverage.out && cat .coverage/coverprofile* | \
-		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> .coverage/coverage.out
+	# Print coverage from this run
+	$(GO) tool covdata percent -i=${COVERAGE_PATH}
+	$(GO) tool covdata textfmt -i=${COVERAGE_PATH} -o ${COVERAGE_PATH}/coverage.out
 
 codecov:
 	curl -Os https://uploader.codecov.io/latest/linux/codecov
 	chmod +x codecov
-	./codecov -f '.coverage/coverage.out'
+	./codecov -f "$(COVERAGE_PATH)/coverage.out"
 
 clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
