@@ -33,7 +33,7 @@ func readMagic(f *os.File) (string, error) {
 	// Identify magic
 	magicName, ok := magicMap.ByValue[magicValue]
 	if !ok {
-		return "", errors.New(fmt.Sprintf("Unknown magic 0x%x", magicValue))
+		return "", fmt.Errorf("Unknown magic 0x%x", magicValue)
 	}
 
 	return magicName, nil

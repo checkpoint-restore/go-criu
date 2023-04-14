@@ -1,7 +1,6 @@
 package images
 
 import (
-	"errors"
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
@@ -138,5 +137,5 @@ func ProtoHandler(magic string) (proto.Message, error) {
 	case "VMAS":
 		return &VmaEntry{}, nil
 	}
-	return nil, errors.New(fmt.Sprintf("No handler found for magic 0x%x", magic))
+	return nil, fmt.Errorf("No handler found for magic 0x%x", magic)
 }
