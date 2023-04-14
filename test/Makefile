@@ -10,7 +10,7 @@ export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE
 
 TEST_PAYLOAD := piggie/piggie
 TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul
-COVERAGE_BINARIES := test.coverage phaul/phaul.coverage
+COVERAGE_BINARIES := test.coverage phaul/phaul.coverage crit/crit-test.coverage
 
 GO_MAJOR_VER = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
 GO_MINOR_VER = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
@@ -67,6 +67,13 @@ phaul/phaul.coverage: check-go-version phaul/*.go
 		-cover \
 		-o $@ phaul/main.go
 
+crit/crit-test.coverage: check-go-version crit/*.go
+	$(MAKE) -C ../crit bin/crit
+	$(MAKE) -C crit/ test-imgs
+	$(GO) build \
+		-cover \
+		-o $@ crit/main.go
+
 coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
@@ -80,6 +87,8 @@ coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	GOCOVERDIR=${COVERAGE_PATH} phaul/phaul.coverage $$PID; \
 	pkill -9 piggie; \
 	}
+	cd crit/ && GOCOVERDIR=${COVERAGE_PATH} ./crit-test.coverage
+	$(MAKE) -C crit/ clean
 	# Print coverage from this run
 	$(GO) tool covdata percent -i=${COVERAGE_PATH}
 	$(GO) tool covdata textfmt -i=${COVERAGE_PATH} -o ${COVERAGE_PATH}/coverage.out

@@ -6,6 +6,7 @@ test/phaul/phaul.coverage
 test/loop/loop
 test/crit/crit-test
 test/crit/test-imgs
+test/crit/crit-test.coverage
 test/.coverage/
 image
 scripts/*.h
