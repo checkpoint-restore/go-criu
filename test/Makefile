@@ -18,6 +18,15 @@ MIN_GO_MAJOR_VER = 1
 MIN_GO_MINOR_VER = 20
 GO_VALIDATION_ERR = Go version is not supported. Please update to at least $(MIN_GO_MAJOR_VER).$(MIN_GO_MINOR_VER)
 
+all: $(TEST_BINARIES) phaul-test
+	mkdir -p image
+	PID=$$(piggie/piggie) && { \
+	./test dump $$PID image && \
+	./test restore image; \
+	pkill -9 piggie; \
+	}
+	rm -rf image
+
 check-go-version:
 	@if [ $(GO_MAJOR_VER) -gt $(MIN_GO_MAJOR_VER) ]; then \
 		exit 0 ;\
@@ -28,16 +37,6 @@ check-go-version:
 		echo '$(GO_VALIDATION_ERR)';\
 		exit 1; \
 	fi
-
-
-all: $(TEST_BINARIES) phaul-test
-	mkdir -p image
-	PID=$$(piggie/piggie) && { \
-	./test dump $$PID image && \
-	./test restore image; \
-	pkill -9 piggie; \
-	}
-	rm -rf image
 
 piggie/piggie: piggie/piggie.c
 	$(CC) $^ -o $@
