@@ -99,9 +99,7 @@ func LoadMagic() MagicMap {
 		if v == 0 || v == 1 {
 			continue
 		}
-		if strings.Contains(name, "_MAGIC") == true {
-			name = strings.Replace(name, "_MAGIC", "", -1)
-		}
+		name = strings.Replace(name, "_MAGIC", "", -1)
 		fmt.Fprintf(w, "\n\tmagicMap.ByName[\"%s\"] = %d",
 			name, v)
 		fmt.Fprintf(w, "\n\tmagicMap.ByValue[%d] = \"%s\"",

@@ -52,7 +52,7 @@ func recodeImgs(imgs []string) error {
 			return err
 		}
 		if !bytes.Equal(imgBytes, testImgBytes) {
-			return errors.New(fmt.Sprint("[RECODE]: Files do not match"))
+			return errors.New("[RECODE]: Files do not match")
 		}
 	}
 
