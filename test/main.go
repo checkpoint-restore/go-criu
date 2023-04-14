@@ -59,8 +59,16 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 }
 
 func featureCheck(c *criu.Criu) error {
-	features := &rpc.CriuFeatures{}
-	featuresToCompare := &rpc.CriuFeatures{}
+	features := &rpc.CriuFeatures{
+		MemTrack:   proto.Bool(false),
+		LazyPages:  proto.Bool(false),
+		PidfdStore: proto.Bool(false),
+	}
+	featuresToCompare := &rpc.CriuFeatures{
+		MemTrack:   proto.Bool(false),
+		LazyPages:  proto.Bool(false),
+		PidfdStore: proto.Bool(false),
+	}
 	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
 	if env != "" {
 		val, err := strconv.Atoi(env)
