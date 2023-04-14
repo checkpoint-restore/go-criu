@@ -59,8 +59,16 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 }
 
 func featureCheck(c *criu.Criu) error {
-	features := &rpc.CriuFeatures{}
-	featuresToCompare := &rpc.CriuFeatures{}
+	features := &rpc.CriuFeatures{
+		MemTrack:   proto.Bool(false),
+		LazyPages:  proto.Bool(false),
+		PidfdStore: proto.Bool(false),
+	}
+	featuresToCompare := &rpc.CriuFeatures{
+		MemTrack:   proto.Bool(false),
+		LazyPages:  proto.Bool(false),
+		PidfdStore: proto.Bool(false),
+	}
 	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
 	if env != "" {
 		val, err := strconv.Atoi(env)
@@ -96,7 +104,7 @@ func featureCheck(c *criu.Criu) error {
 
 	if *features.MemTrack != *featuresToCompare.MemTrack {
 		return fmt.Errorf(
-			"Unexpected MemTrack FeatureCheck result %v:%v",
+			"unexpected MemTrack FeatureCheck result %v:%v",
 			*features.MemTrack,
 			*featuresToCompare.MemTrack,
 		)
@@ -104,7 +112,7 @@ func featureCheck(c *criu.Criu) error {
 
 	if *features.LazyPages != *featuresToCompare.LazyPages {
 		return fmt.Errorf(
-			"Unexpected LazyPages FeatureCheck result %v:%v",
+			"unexpected LazyPages FeatureCheck result %v:%v",
 			*features.LazyPages,
 			*featuresToCompare.LazyPages,
 		)
@@ -112,7 +120,7 @@ func featureCheck(c *criu.Criu) error {
 
 	if *features.PidfdStore != *featuresToCompare.PidfdStore {
 		return fmt.Errorf(
-			"Unexpected PidfdStore FeatureCheck result %v:%v",
+			"unexpected PidfdStore FeatureCheck result %v:%v",
 			*features.PidfdStore,
 			*featuresToCompare.PidfdStore,
 		)

@@ -6,6 +6,10 @@ linters:
     - format
   disable:
     - musttag
+  enable:
+    - whitespace
+    - misspell
+    - dupl
 
 linters-settings:
   exhaustive:
