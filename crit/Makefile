@@ -40,8 +40,8 @@ gen-proto:
 bin/crit: cmd/cli.go
 	$(GO) build ${GOFLAGS} -o $@ $^
 
-../test/loop/loop: ../test/loop/loop.c
-	$(CC) $^ -o $@
+../test/loop/loop:
+	$(MAKE) -C ../test/loop
 
 test-imgs: ../test/loop/loop
 	$(eval PID := $(shell ../test/loop/loop))

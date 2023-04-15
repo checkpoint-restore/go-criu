@@ -1,4 +1,3 @@
-CC ?= gcc
 GO ?= go
 CRIU ?= criu
 
@@ -22,8 +21,8 @@ test-imgs: ../loop/loop
 ../../crit/bin/crit:
 	$(MAKE) -C ../../crit bin/crit GOFLAGS="${GOFLAGS}"
 
-../loop/loop: ../loop/loop.c
-	$(CC) $^ -o $@
+../loop/loop:
+	$(MAKE) -C ../loop
 
 crit-test: main.go
 	$(GO) build -v -o $@ $^
