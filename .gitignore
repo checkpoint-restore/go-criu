@@ -13,3 +13,4 @@ scripts/*.h
 scripts/expected.go
 scripts/output.go
 crit/bin
+crit/test-imgs/

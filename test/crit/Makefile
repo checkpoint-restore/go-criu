@@ -2,10 +2,7 @@ CC ?= gcc
 GO ?= go
 CRIU ?= criu
 
-all: unit-test integration-test e2e-test clean
-
-unit-test: test-imgs
-	go test -v ./...
+all: integration-test e2e-test clean
 
 integration-test: test-imgs crit-test
 	@echo "Running integration test"
@@ -34,4 +31,4 @@ crit-test: main.go
 clean:
 	@rm -rf test-imgs
 
-.PHONY: all test unit-test integration-test e2e-test clean
+.PHONY: all test integration-test e2e-test clean

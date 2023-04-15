@@ -1,4 +1,5 @@
 GO ?= go
+CRIU ?= criu
 
 # The import path that protoc will use if a proto file imports another one
 import_path := github.com/checkpoint-restore/go-criu/crit/images
@@ -39,7 +40,21 @@ gen-proto:
 bin/crit: cmd/cli.go
 	$(GO) build -o $@ $^
 
-clean:
-	rm -f bin/crit
+../test/loop/loop: ../test/loop/loop.c
+	$(CC) $^ -o $@
 
-.PHONY: all gen-proto update-proto clean
+test-imgs: ../test/loop/loop
+	$(eval PID := $(shell ../test/loop/loop))
+	mkdir -p $@
+	$(CRIU) dump -v4 -o dump.log -D $@ -t $(PID)
+	$(CRIU) restore -v4 -o restore.log -D $@ -d
+	pkill -9 loop
+
+unit-test: test-imgs
+	go test ${GOFLAGS} -v ./...
+
+clean:
+	@rm -f bin/crit
+	@rm -rf test-imgs
+
+.PHONY: all gen-proto update-proto unit-test clean

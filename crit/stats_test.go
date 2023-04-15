@@ -1,13 +1,9 @@
-package main
+package crit
 
-import (
-	"testing"
-
-	"github.com/checkpoint-restore/go-criu/v6/crit"
-)
+import "testing"
 
 func TestGetDumpStats(t *testing.T) {
-	dumpStats, err := crit.GetDumpStats("test-imgs")
+	dumpStats, err := GetDumpStats("test-imgs")
 	if err != nil {
 		t.Error("Failed to get stats")
 	}
@@ -17,7 +13,7 @@ func TestGetDumpStats(t *testing.T) {
 }
 
 func TestGetRestoreStats(t *testing.T) {
-	restoreStats, err := crit.GetRestoreStats("test-imgs")
+	restoreStats, err := GetRestoreStats("test-imgs")
 	if err != nil {
 		t.Error("Failed to get stats")
 	}
