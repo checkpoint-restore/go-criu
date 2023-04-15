@@ -38,7 +38,7 @@ gen-proto:
 		$(proto_files)
 
 bin/crit: cmd/cli.go
-	$(GO) build -o $@ $^
+	$(GO) build ${GOFLAGS} -o $@ $^
 
 ../test/loop/loop: ../test/loop/loop.c
 	$(CC) $^ -o $@

@@ -68,7 +68,10 @@ phaul/phaul.coverage: check-go-version phaul/*.go
 		-o $@ phaul/main.go
 
 crit/crit-test.coverage: check-go-version crit/*.go
-	$(MAKE) -C ../crit bin/crit
+	# Re-build the crit binary, so that test coverage
+	# works even if we run `make test` before that.
+	$(MAKE) -C ../crit clean
+	$(MAKE) -C ../crit bin/crit GOFLAGS="-cover"
 	$(MAKE) -C crit/ test-imgs
 	$(GO) build \
 		-cover \
@@ -89,6 +92,7 @@ coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	}
 	cd crit/ && GOCOVERDIR=${COVERAGE_PATH} ./crit-test.coverage
 	$(MAKE) -C ../crit/ unit-test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-crit-unit-test"
+	$(MAKE) -C crit/ e2e-test GOCOVERDIR=${COVERAGE_PATH}
 	$(MAKE) -C crit/ clean
 	# Print coverage from this run
 	$(GO) tool covdata percent -i=${COVERAGE_PATH}

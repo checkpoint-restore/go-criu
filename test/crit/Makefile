@@ -20,7 +20,7 @@ test-imgs: ../loop/loop
 	pkill -9 loop
 
 ../../crit/bin/crit:
-	$(MAKE) -C ../../crit bin/crit
+	$(MAKE) -C ../../crit bin/crit GOFLAGS="${GOFLAGS}"
 
 ../loop/loop: ../loop/loop.c
 	$(CC) $^ -o $@
