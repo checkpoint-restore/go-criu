@@ -2,6 +2,11 @@ name: ci
 
 on: [push, pull_request]
 
+# Cancel any preceding run on the pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
