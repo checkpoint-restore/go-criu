@@ -21,7 +21,7 @@ func decodePipesData(
 ) (string, error) {
 	p, ok := payload.(*images.PipeDataEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	extraSize := p.GetBytes()
 
@@ -47,7 +47,7 @@ func decodeSkQueues(
 ) (string, error) {
 	p, ok := payload.(*images.SkPacketEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	extraSize := p.GetLength()
 
@@ -78,7 +78,7 @@ func decodeTcpStream(
 ) (string, error) {
 	p, ok := payload.(*images.TcpStreamEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	inQLen := p.GetInqLen()
 	outQLen := p.GetOutqLen()
@@ -115,7 +115,7 @@ func decodeBpfmapData(
 ) (string, error) {
 	p, ok := payload.(*images.BpfmapDataEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	extraSize := p.GetKeysBytes() + p.GetValuesBytes()
 
@@ -141,7 +141,7 @@ func decodeIpcSem(
 ) (string, error) {
 	p, ok := payload.(*images.IpcSemEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	// Each semaphore is 16-bit
 	extraSize := int64(p.GetNsems()) * 2
@@ -180,7 +180,7 @@ func decodeIpcShm(
 ) (string, error) {
 	p, ok := payload.(*images.IpcShmEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	extraSize := int64(p.GetSize())
 	// Round off to nearest 32-bit multiple
@@ -212,7 +212,7 @@ func decodeIpcMsg(
 ) (string, error) {
 	p, ok := payload.(*images.IpcMsgEntry)
 	if !ok {
-		return "", errors.New("Unable to assert payload type")
+		return "", errors.New("unable to assert payload type")
 	}
 	msgQNum := int64(p.GetQnum())
 	sizeBuf := make([]byte, 4)

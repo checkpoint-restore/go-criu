@@ -137,5 +137,5 @@ func ProtoHandler(magic string) (proto.Message, error) {
 	case "VMAS":
 		return &VmaEntry{}, nil
 	}
-	return nil, fmt.Errorf("No handler found for magic 0x%x", magic)
+	return nil, fmt.Errorf("no handler found for magic 0x%x", magic)
 }

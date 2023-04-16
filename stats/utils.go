@@ -16,11 +16,11 @@ func readStatisticsFile(imgDir *os.File, fileName string) (*StatsEntry, error) {
 	}
 
 	if binary.LittleEndian.Uint32(buf[PrimaryMagicOffset:SecondaryMagicOffset]) != ImgServiceMagic {
-		return nil, errors.New("Primary magic not found")
+		return nil, errors.New("primary magic not found")
 	}
 
 	if binary.LittleEndian.Uint32(buf[SecondaryMagicOffset:SizeOffset]) != StatsMagic {
-		return nil, errors.New("Secondary magic not found")
+		return nil, errors.New("secondary magic not found")
 	}
 
 	payloadSize := binary.LittleEndian.Uint32(buf[SizeOffset:PayloadOffset])
