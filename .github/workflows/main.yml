@@ -54,6 +54,7 @@ jobs:
           make -C crit gen-proto
           sudo -E make -C crit all
         fi
+        sudo -E make -C crit unit-test
         sudo -E make -C test crit-test
 
     - name: Check code coverage

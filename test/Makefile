@@ -68,7 +68,10 @@ phaul/phaul.coverage: check-go-version phaul/*.go
 		-o $@ phaul/main.go
 
 crit/crit-test.coverage: check-go-version crit/*.go
-	$(MAKE) -C ../crit bin/crit
+	# Re-build the crit binary, so that test coverage
+	# works even if we run `make test` before that.
+	$(MAKE) -C ../crit clean
+	$(MAKE) -C ../crit bin/crit GOFLAGS="-cover"
 	$(MAKE) -C crit/ test-imgs
 	$(GO) build \
 		-cover \
@@ -88,10 +91,17 @@ coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	pkill -9 piggie; \
 	}
 	cd crit/ && GOCOVERDIR=${COVERAGE_PATH} ./crit-test.coverage
+	$(MAKE) -C ../crit/ unit-test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-crit-unit-test"
+	$(MAKE) -C crit/ e2e-test GOCOVERDIR=${COVERAGE_PATH}
 	$(MAKE) -C crit/ clean
 	# Print coverage from this run
 	$(GO) tool covdata percent -i=${COVERAGE_PATH}
 	$(GO) tool covdata textfmt -i=${COVERAGE_PATH} -o ${COVERAGE_PATH}/coverage.out
+	# The coverage from 'go test' is stored in coverprofile-*,
+	# but we upload only 'coverage.out' with codecov. Here we
+	# combine the coverage results to show up in GitHub.
+	cat .coverage/coverprofile* | \
+		grep -v mode: | sort -r | awk '{if($$1 != last) {print $$0;last=$$1}}' >> ${COVERAGE_PATH}/coverage.out
 
 codecov:
 	curl -Os https://uploader.codecov.io/latest/linux/codecov
