@@ -51,6 +51,7 @@ test-imgs: ../test/loop/loop
 	pkill -9 loop
 
 unit-test: test-imgs
+	$(eval GOFLAGS ?= -cover)
 	go test ${GOFLAGS} -v ./...
 
 clean:
