@@ -38,4 +38,8 @@ vendor:
 	$(GO) mod vendor
 	$(GO) mod verify
 
-.PHONY: build test lint vendor coverage codecov
+clean:
+	$(MAKE) -C crit/ clean
+	$(MAKE) -C test/ clean
+
+.PHONY: build test lint vendor coverage codecov clean

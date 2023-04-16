@@ -28,6 +28,6 @@ crit-test: main.go
 	$(GO) build -v -o $@ $^
 
 clean:
-	@rm -rf test-imgs
+	@rm -rf test-imgs crit-test
 
 .PHONY: all test integration-test e2e-test clean
