@@ -22,7 +22,7 @@ func getStats(path string) (*images.StatsEntry, error) {
 
 	stats, ok := statsImg.Entries[0].Message.(*images.StatsEntry)
 	if !ok {
-		return nil, errors.New("Failed to type assert stats image")
+		return nil, errors.New("failed to type assert stats image")
 	}
 
 	return stats, nil

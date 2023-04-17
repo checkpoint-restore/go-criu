@@ -82,7 +82,7 @@ func (s *Server) StartIter() error {
 // StopIter function
 func (s *Server) StopIter() error {
 	if s.process == nil {
-		return errors.New("No process to stop")
+		return errors.New("no process to stop")
 	}
 	state, err := s.process.Wait()
 	if err != nil && !errors.Is(err, unix.ECHILD) {

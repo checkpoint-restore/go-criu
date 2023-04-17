@@ -171,7 +171,7 @@ var xCmd = &cobra.Command{
 		case "rss":
 			xData, err = c.ExploreRss()
 		default:
-			err = errors.New("Error exploring directory: Invalid explore type")
+			err = errors.New("error exploring directory: Invalid explore type")
 		}
 		if err != nil {
 			log.Fatal(err)
