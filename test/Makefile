@@ -113,5 +113,7 @@ codecov:
 clean:
 	@rm -f $(TEST_BINARIES) $(COVERAGE_BINARIES) codecov
 	@rm -rf image $(COVERAGE_PATH)
+	@make -C crit/ clean
+	@make -C loop/ clean
 
 .PHONY: all clean coverage codecov crit-test phaul-test check-go-version
