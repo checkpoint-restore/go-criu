@@ -10,9 +10,9 @@ import (
 
 // PsTree represents the process tree
 type PsTree struct {
-	PId      uint32              `json:"pId"`
-	PgId     uint32              `json:"pgId"`
-	SId      uint32              `json:"sId"`
+	PID      uint32              `json:"pId"`
+	PgID     uint32              `json:"pgId"`
+	SID      uint32              `json:"sId"`
 	Comm     string              `json:"comm"`
 	Process  *images.PstreeEntry `json:"-"`
 	Core     *images.CoreEntry   `json:"-"`
@@ -30,18 +30,18 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 	var psTreeRoot *PsTree
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
-		pId := process.GetPid()
+		pID := process.GetPid()
 
-		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pId)))
+		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
 		coreData := coreImg.Entries[0].Message.(*images.CoreEntry)
 
 		ps := &PsTree{
-			PId:     pId,
-			PgId:    process.GetPgid(),
-			SId:     process.GetSid(),
+			PID:     pID,
+			PgID:    process.GetPgid(),
+			SID:     process.GetSid(),
 			Comm:    coreData.Tc.GetComm(),
 			Process: process,
 			Core:    coreData,
@@ -50,7 +50,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 		if process.GetPpid() == 0 {
 			psTreeRoot = ps
 		}
-		processes[pId] = ps
+		processes[pID] = ps
 	}
 
 	for _, ps := range processes {
@@ -86,20 +86,20 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 	fds := make([]*Fd, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
-		pId := process.GetPid()
+		pID := process.GetPid()
 		// Get file with object IDs
-		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pId)))
+		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
-		filesId := idsImg.Entries[0].Message.(*images.TaskKobjIdsEntry).GetFilesId()
+		filesID := idsImg.Entries[0].Message.(*images.TaskKobjIdsEntry).GetFilesId()
 		// Get open file descriptors
-		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesId)))
+		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)))
 		if err != nil {
 			return nil, err
 		}
 
-		fdEntry := Fd{PId: pId}
+		fdEntry := Fd{PId: pID}
 		for _, fdInfoEntry := range fdInfoImg.Entries {
 			fdInfo := fdInfoEntry.Message.(*images.FdinfoEntry)
 			filePath, err := getFilePath(c.inputDirPath,
@@ -114,7 +114,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			fdEntry.Files = append(fdEntry.Files, &file)
 		}
 		// Get chroot and chdir info
-		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pId)))
+		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
@@ -167,22 +167,22 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		return nil, err
 	}
 
-	vmaIdMap, vmaId := make(map[uint64]int), 0
+	vmaIDMap, vmaID := make(map[uint64]int), 0
 	// Use a closure to handle the ID counter
-	getVmaId := func(shmId uint64) int {
-		if _, ok := vmaIdMap[shmId]; !ok {
-			vmaIdMap[shmId] = vmaId
-			vmaId++
+	getVmaID := func(shmId uint64) int {
+		if _, ok := vmaIDMap[shmId]; !ok {
+			vmaIDMap[shmId] = vmaID
+			vmaID++
 		}
-		return vmaIdMap[shmId]
+		return vmaIDMap[shmId]
 	}
 
 	memMaps := make([]*MemMap, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
-		pId := process.GetPid()
+		pID := process.GetPid()
 		// Get memory mappings
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pId)))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +194,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		}
 
 		memMap := MemMap{
-			PId: pId,
+			PId: pID,
 			Exe: exePath,
 		}
 		for _, vma := range mmInfo.GetVmas() {
@@ -227,11 +227,11 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 			case vma.GetFlags()&0x0100 != 0:
 				mem.Resource = "[stack?]"
 			case status&(1<<11) != 0:
-				mem.Resource = fmt.Sprintf("packet[%d]", getVmaId(vma.GetShmid()))
+				mem.Resource = fmt.Sprintf("packet[%d]", getVmaID(vma.GetShmid()))
 			case status&(1<<10) != 0:
-				mem.Resource = fmt.Sprintf("ips[%d]", getVmaId(vma.GetShmid()))
+				mem.Resource = fmt.Sprintf("ips[%d]", getVmaID(vma.GetShmid()))
 			case status&(1<<8) != 0:
-				mem.Resource = fmt.Sprintf("shmem[%d]", getVmaId(vma.GetShmid()))
+				mem.Resource = fmt.Sprintf("shmem[%d]", getVmaID(vma.GetShmid()))
 			}
 			if vma.GetStatus()&1 == 0 {
 				mem.Resource = fmt.Sprint(mem.Resource, " *")
@@ -297,21 +297,21 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 	rssMaps := make([]*RssMap, 0)
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*images.PstreeEntry)
-		pId := process.GetPid()
+		pID := process.GetPid()
 		// Get virtual memory addresses
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pId)))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
 		vmas := mmImg.Entries[0].Message.(*images.MmEntry).GetVmas()
 		// Get physical memory addresses
-		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pId)))
+		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pID)))
 		if err != nil {
 			return nil, err
 		}
 
 		vmaIndex, vmaIndexPrev := 0, -1
-		rssMap := RssMap{PId: pId}
+		rssMap := RssMap{PId: pID}
 		// Skip pagemap head entry
 		for _, pagemapEntry := range pagemapImg.Entries[1:] {
 			pagemapData := pagemapEntry.Message.(*images.PagemapEntry)

@@ -21,7 +21,7 @@ func encodeSkQueues(extra string) ([]byte, error) {
 }
 
 // Extra payload handler for TCP streams
-func encodeTcpStream(extra string) ([]byte, error) {
+func encodeTCPStream(extra string) ([]byte, error) {
 	extraPayload := tcpStreamExtra{}
 	if err := json.Unmarshal([]byte(extra), &extraPayload); err != nil {
 		return nil, err
