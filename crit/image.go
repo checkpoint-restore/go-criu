@@ -50,7 +50,7 @@ func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 // proper proto structs depending on the magic
 type jsonImage struct {
 	Magic       string            `json:"magic"`
-	JsonEntries []json.RawMessage `json:"entries"`
+	JSONEntries []json.RawMessage `json:"entries"`
 }
 
 // UnmarshalJSON is the unmarshaler for CriuImage.
@@ -80,7 +80,7 @@ func (img *CriuImage) UnmarshalJSON(data []byte) error {
 }
 
 // Helper to separate proto data and extra data
-func splitJsonData(data []byte) ([]byte, string) {
+func splitJSONData(data []byte) ([]byte, string) {
 	extraPayload := ""
 	dataString := string(data)
 	dataItems := strings.Split(dataString, ",")
@@ -97,13 +97,13 @@ func splitJsonData(data []byte) ([]byte, string) {
 // unmarshalDefault is used for all JSON data
 // that is in the standard protobuf format
 func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
-	for _, data := range imgData.JsonEntries {
+	for _, data := range imgData.JSONEntries {
 		// Create proto struct to hold payload
 		payload, err := images.ProtoHandler(img.Magic)
 		if err != nil {
 			return err
 		}
-		jsonPayload, extraPayload := splitJsonData(data)
+		jsonPayload, extraPayload := splitJSONData(data)
 		// Handle proto data
 		if err = protojson.Unmarshal(jsonPayload, payload); err != nil {
 			return err
@@ -121,7 +121,7 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	// Process primary entry
 	entry := CriuEntry{Message: &images.GhostFileEntry{}}
-	jsonPayload, extraPayload := splitJsonData(imgData.JsonEntries[0])
+	jsonPayload, extraPayload := splitJSONData(imgData.JSONEntries[0])
 	if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 		return err
 	}
@@ -129,14 +129,14 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	img.Entries = append(img.Entries, &entry)
 	// If there is only one JSON entry,
 	// then no ghost chunks are present
-	if len(imgData.JsonEntries) == 1 {
+	if len(imgData.JSONEntries) == 1 {
 		return nil
 	}
 
 	// Process chunks
-	for _, data := range imgData.JsonEntries[1:] {
+	for _, data := range imgData.JSONEntries[1:] {
 		entry = CriuEntry{Message: &images.GhostChunkEntry{}}
-		jsonPayload, extraPayload = splitJsonData(data)
+		jsonPayload, extraPayload = splitJSONData(data)
 		if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 			return err
 		}
@@ -151,7 +151,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	// First entry is pagemap head
 	var payload proto.Message = &images.PagemapHead{}
-	for _, data := range imgData.JsonEntries {
+	for _, data := range imgData.JSONEntries {
 		entry := CriuEntry{Message: payload}
 		if err := protojson.Unmarshal(data, entry.Message); err != nil {
 			return err

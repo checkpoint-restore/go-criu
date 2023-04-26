@@ -36,7 +36,7 @@ func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
 	case "SK_QUEUES":
 		err = img.decodeDefault(f, decodeSkQueues, noPayload)
 	case "TCP_STREAM":
-		err = img.decodeDefault(f, decodeTcpStream, noPayload)
+		err = img.decodeDefault(f, decodeTCPStream, noPayload)
 	case "BPFMAP_DATA":
 		err = img.decodeDefault(f, decodeBpfmapData, noPayload)
 	case "IPCNS_SEM":

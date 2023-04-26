@@ -71,7 +71,7 @@ type tcpStreamExtra struct {
 }
 
 // Extra data handler for TCP streams
-func decodeTcpStream(
+func decodeTCPStream(
 	f *os.File,
 	payload proto.Message,
 	noPayload bool,
@@ -103,8 +103,8 @@ func decodeTcpStream(
 	}
 	extra.OutQ = base64.StdEncoding.EncodeToString(extraBuf)
 
-	extraJson, err := json.Marshal(extra)
-	return string(extraJson), err
+	extraJSON, err := json.Marshal(extra)
+	return string(extraJSON), err
 }
 
 // Extra data handler for BPF map data
@@ -168,8 +168,8 @@ func decodeIpcSem(
 	if err != nil {
 		return "", err
 	}
-	extraJson, err := json.Marshal(extraPayload)
-	return string(extraJson), err
+	extraJSON, err := json.Marshal(extraPayload)
+	return string(extraJSON), err
 }
 
 // Extra data handler for IPC shared memory
@@ -271,9 +271,9 @@ func decodeIpcMsg(
 	if noPayload {
 		return countBytes(totalSize), nil
 	}
-	extraJson, err := json.Marshal(extraPayload)
+	extraJSON, err := json.Marshal(extraPayload)
 	if err != nil {
 		return "", err
 	}
-	return string(extraJson), nil
+	return string(extraJSON), nil
 }

@@ -59,7 +59,7 @@ func encodeImg(img *CriuImage, f *os.File) error {
 	case "SK_QUEUES":
 		err = img.encodeDefault(f, encodeSkQueues)
 	case "TCP_STREAM":
-		err = img.encodeDefault(f, encodeTcpStream)
+		err = img.encodeDefault(f, encodeTCPStream)
 	default:
 		err = img.encodeDefault(f, nil)
 	}
