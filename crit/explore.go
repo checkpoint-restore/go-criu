@@ -26,7 +26,7 @@ type PsTree struct {
 
 // ExplorePs constructs the process tree and returns the root process
 func (c *crit) ExplorePs() (*PsTree, error) {
-	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
 
-		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)))
+		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)), &criu_core.CoreEntry{})
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ type File struct {
 // ExploreFds searches the process tree for open files
 // and returns a list of PIDs with the corresponding files
 func (c *crit) ExploreFds() ([]*Fd, error) {
-	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +93,13 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
 		// Get file with object IDs
-		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)))
+		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
 		if err != nil {
 			return nil, err
 		}
 		filesID := idsImg.Entries[0].Message.(*criu_core.TaskKobjIdsEntry).GetFilesId()
 		// Get open file descriptors
-		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)))
+		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)), &fdinfo.FdinfoEntry{})
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +119,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			fdEntry.Files = append(fdEntry.Files, &file)
 		}
 		// Get chroot and chdir info
-		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pID)))
+		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pID)), &fs.FsEntry{})
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +167,7 @@ type Mem struct {
 // ExploreMems traverses the process tree and returns a
 // list of processes with the corresponding memory mapping
 func (c *crit) ExploreMems() ([]*MemMap, error) {
-	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
 		// Get memory mappings
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +294,7 @@ type Vma struct {
 // ExploreRss traverses the process tree and returns
 // a list of processes with their RSS mappings
 func (c *crit) ExploreRss() ([]*RssMap, error) {
-	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"))
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
 	}
@@ -304,13 +304,13 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
 		// Get virtual memory addresses
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)))
+		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
 			return nil, err
 		}
 		vmas := mmImg.Entries[0].Message.(*mm.MmEntry).GetVmas()
 		// Get physical memory addresses
-		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pID)))
+		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pID)), &pagemap.PagemapEntry{})
 		if err != nil {
 			return nil, err
 		}

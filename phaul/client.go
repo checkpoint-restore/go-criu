@@ -2,7 +2,6 @@ package phaul
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v6"
 	"github.com/checkpoint-restore/go-criu/v6/crit"
@@ -113,12 +112,10 @@ func (pc *Client) Migrate() error {
 		}
 
 		// Get dump statistics with crit
-		c := crit.New(filepath.Join(imgDir.Name(), "stats-dump"), "", "", false, false)
-		statsImg, err := c.Decode()
+		stats, err := crit.GetDumpStats(imgDir.Name())
 		if err != nil {
 			return err
 		}
-		stats := statsImg.Entries[0].Message.(*stats.StatsEntry).GetDump()
 
 		if isLastIter(iter, stats, prevStats) {
 			break

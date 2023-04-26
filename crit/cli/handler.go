@@ -1,8 +1,12 @@
-package images
+package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
+	"github.com/checkpoint-restore/go-criu/v6/crit"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/apparmor"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/autofs"
 	binfmt_misc "github.com/checkpoint-restore/go-criu/v6/crit/images/binfmt-misc"
@@ -59,7 +63,41 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func ProtoHandler(magic string) (proto.Message, error) {
+func GetEntryTypeFromImg(imgFile *os.File) (proto.Message, error) {
+	magic, err := crit.ReadMagic(imgFile)
+	if err != nil {
+		return nil, err
+	}
+	// Seek to the beginning of the file
+	_, err = imgFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	return protoHandler(magic)
+}
+
+func GetEntryTypeFromJSON(jsonFile *os.File) (proto.Message, error) {
+	jsonData, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	// Seek to the beginning of the file
+	_, err = jsonFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	var img map[string]any
+	err = json.Unmarshal(jsonData, &img)
+	if err != nil {
+		return nil, err
+	}
+
+	return protoHandler(img["magic"].(string))
+}
+
+func protoHandler(magic string) (proto.Message, error) {
 	switch magic {
 	case "APPARMOR":
 		return &apparmor.ApparmorEntry{}, nil
@@ -189,6 +227,14 @@ func ProtoHandler(magic string) (proto.Message, error) {
 		return &utsns.UtsnsEntry{}, nil
 	case "VMAS":
 		return &vma.VmaEntry{}, nil
+	/* Pagemap and ghost file have custom handlers
+	and cannot use a single proto struct to be
+	encoded or decoded. Hence, for these two
+	image types, nil is returned. */
+	case "PAGEMAP":
+		return nil, nil
+	case "GHOST_FILE":
+		return nil, nil
 	}
-	return nil, fmt.Errorf("no handler found for magic 0x%x", magic)
+	return nil, fmt.Errorf("no protobuf binding found for magic 0x%x", magic)
 }

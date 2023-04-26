@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -40,11 +40,29 @@ var decodeCmd = &cobra.Command{
 	Long: `Convert the input binary image to JSON and write it to a file.
 If no output file is provided, the JSON is printed to stdout.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		c = crit.NewCli(inputFilePath, outputFilePath,
+		var (
+			inputFile *os.File
+			err       error
+		)
+		if inputFilePath == "" {
+			inputFile = os.Stdin
+		} else {
+			inputFile, err = os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(fmt.Errorf("error opening input file: %w", err))
+			}
+			defer inputFile.Close()
+		}
+
+		c = crit.New(inputFile, nil,
 			inputDirPath, pretty, noPayload)
-		img, err := c.Decode()
+		entryType, err := GetEntryTypeFromImg(inputFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error getting protobuf binding: %w", err))
+		}
+		img, err := c.Decode(entryType)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error decoding image: %w", err))
 		}
 
 		var jsonData []byte
@@ -54,7 +72,7 @@ If no output file is provided, the JSON is printed to stdout.`,
 			jsonData, err = json.Marshal(img)
 		}
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+			log.Fatal(fmt.Errorf("error processing data into JSON: %w", err))
 		}
 		// If no output file, print to stdout
 		if outputFilePath == "" {
@@ -64,12 +82,13 @@ If no output file is provided, the JSON is printed to stdout.`,
 		// Write to output file
 		jsonFile, err := os.Create(outputFilePath)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error opening destination file: ", err)))
+			log.Fatal(fmt.Errorf("error opening destination file: %w", err))
 		}
 		defer jsonFile.Close()
+
 		_, err = jsonFile.Write(jsonData)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error writing JSON data: ", err)))
+			log.Fatal(fmt.Errorf("error writing JSON data: %w", err))
 		}
 	},
 }
@@ -80,16 +99,43 @@ var encodeCmd = &cobra.Command{
 	Short: "Convert JSON to binary image file",
 	Long:  "Convert the input JSON to a CRIU image file.",
 	Run: func(cmd *cobra.Command, args []string) {
-		c = crit.NewCli(inputFilePath, outputFilePath,
+		var (
+			inputFile, outputFile *os.File
+			err                   error
+		)
+		if inputFilePath == "" {
+			inputFile = os.Stdin
+		} else {
+			inputFile, err = os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(fmt.Errorf("error opening input file: %w", err))
+			}
+			defer inputFile.Close()
+		}
+		if outputFilePath == "" {
+			outputFile = os.Stdout
+		} else {
+			outputFile, err = os.Create(outputFilePath)
+			if err != nil {
+				log.Fatal(fmt.Errorf("error opening output file: %w", err))
+			}
+			defer outputFile.Close()
+		}
+
+		c = crit.New(inputFile, outputFile,
 			inputDirPath, pretty, noPayload)
-		// Convert JSON to Go struct
-		img, err := c.Parse()
+		entryType, err := GetEntryTypeFromJSON(inputFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error getting protobuf binding: %w", err))
+		}
+		// Convert JSON to Go struct
+		img, err := c.Parse(entryType)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error parsing JSON: %w", err))
 		}
 		// Write Go struct to binary image file
 		if err := c.Encode(img); err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error writing to file: %w", err))
 		}
 	},
 }
@@ -103,16 +149,34 @@ var showCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
 		pretty = true
-		c = crit.NewCli(inputFilePath, outputFilePath,
+		var (
+			inputFile *os.File
+			err       error
+		)
+		if inputFilePath == "" {
+			inputFile = os.Stdin
+		} else {
+			inputFile, err = os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(fmt.Errorf("error opening input file: %w", err))
+			}
+			defer inputFile.Close()
+		}
+
+		c = crit.New(inputFile, nil,
 			inputDirPath, pretty, noPayload)
-		img, err := c.Decode()
+		entryType, err := GetEntryTypeFromImg(inputFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error getting protobuf binding: %w", err))
+		}
+		img, err := c.Decode(entryType)
+		if err != nil {
+			log.Fatal(fmt.Errorf("error decoding image: %w", err))
 		}
 
 		jsonData, err := json.MarshalIndent(img, "", "    ")
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+			log.Fatal(fmt.Errorf("error processing data into JSON: %w", err))
 		}
 		fmt.Println(string(jsonData))
 	},
@@ -125,16 +189,30 @@ var infoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFilePath = args[0]
-		c = crit.NewCli(inputFilePath, outputFilePath,
+		var (
+			inputFile *os.File
+			err       error
+		)
+		if inputFilePath == "" {
+			inputFile = os.Stdin
+		} else {
+			inputFile, err = os.Open(inputFilePath)
+			if err != nil {
+				log.Fatal(fmt.Errorf("error opening input file: %w", err))
+			}
+			defer inputFile.Close()
+		}
+
+		c = crit.New(inputFile, nil,
 			inputDirPath, pretty, noPayload)
 		img, err := c.Info()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error decoding image: %w", err))
 		}
 
 		jsonData, err := json.MarshalIndent(img, "", "    ")
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+			log.Fatal(fmt.Errorf("error processing data into JSON: %w", err))
 		}
 		fmt.Println(string(jsonData))
 	},
@@ -155,10 +233,10 @@ var xCmd = &cobra.Command{
 		// returned object since we don't really care
 		// about the data itself, as long as we can
 		// marshal it into JSON and display it.
-		var xData interface{}
+		var xData any
 		var err error
 
-		c = crit.NewCli(inputFilePath, outputFilePath,
+		c = crit.New(nil, nil,
 			inputDirPath, pretty, noPayload)
 		// Switch the explore type and call the handler.
 		switch args[1] {
@@ -171,22 +249,22 @@ var xCmd = &cobra.Command{
 		case "rss":
 			xData, err = c.ExploreRss()
 		default:
-			err = errors.New("error exploring directory: Invalid explore type")
+			err = errors.New("error exploring directory: invalid explore type")
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("error exploring directory: %w", err))
 		}
 
 		jsonData, err := json.MarshalIndent(xData, "", "    ")
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprint("Error processing data into JSON: ", err)))
+			log.Fatal(fmt.Errorf("error processing data into JSON: %w", err))
 		}
 		fmt.Println(string(jsonData))
 	},
 }
 
 // Add all commands to the root command and configure flags
-func init() {
+func Init() {
 	// Disable completion generation
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	// Decode options
@@ -212,8 +290,8 @@ func init() {
 	rootCmd.AddCommand(xCmd)
 }
 
-func main() {
+func Run() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("error running CLI: %w", err))
 	}
 }

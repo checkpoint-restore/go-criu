@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -14,8 +13,9 @@ import (
 
 // CriuImage represents a CRIU binary image file
 type CriuImage struct {
-	Magic   string       `json:"magic"`
-	Entries []*CriuEntry `json:"entries"`
+	Magic     string        `json:"magic"`
+	Entries   []*CriuEntry  `json:"entries"`
+	EntryType proto.Message `json:"-"`
 }
 
 // CriuEntry represents a single entry in an image
@@ -101,13 +101,10 @@ func splitJSONData(data []byte) ([]byte, string) {
 func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 	for _, data := range imgData.JSONEntries {
 		// Create proto struct to hold payload
-		payload, err := images.ProtoHandler(img.Magic)
-		if err != nil {
-			return err
-		}
+		payload := proto.Clone(img.EntryType)
 		jsonPayload, extraPayload := splitJSONData(data)
 		// Handle proto data
-		if err = protojson.Unmarshal(jsonPayload, payload); err != nil {
+		if err := protojson.Unmarshal(jsonPayload, payload); err != nil {
 			return err
 		}
 		img.Entries = append(img.Entries, &CriuEntry{

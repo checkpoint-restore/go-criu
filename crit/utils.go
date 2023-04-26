@@ -2,7 +2,6 @@ package crit
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,10 +13,11 @@ import (
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/regfile"
 	sk_unix "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-unix"
 	"github.com/checkpoint-restore/go-criu/v6/magic"
+	"google.golang.org/protobuf/proto"
 )
 
 // Helper to decode magic name from hex value
-func readMagic(f *os.File) (string, error) {
+func ReadMagic(f *os.File) (string, error) {
 	magicMap := magic.LoadMagic()
 	// Read magic
 	magicBuf := make([]byte, 4)
@@ -62,7 +62,7 @@ func countImg(f *os.File) (*CriuImage, error) {
 	var err error
 
 	// Identify magic
-	if img.Magic, err = readMagic(f); err != nil {
+	if img.Magic, err = ReadMagic(f); err != nil {
 		return nil, err
 	}
 
@@ -95,14 +95,14 @@ func countImg(f *os.File) (*CriuImage, error) {
 }
 
 // Helper to decode image when file path is given
-func getImg(path string) (*CriuImage, error) {
+func getImg(path string, entryType proto.Message) (*CriuImage, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, errors.New(fmt.Sprint("Error opening binary file: ", err))
+		return nil, fmt.Errorf("error opening binary file: %w", err)
 	}
 	defer file.Close()
 
-	return decodeImg(file, false)
+	return decodeImg(file, entryType, false)
 }
 
 // Global variables to cache loaded images
@@ -116,7 +116,7 @@ func getFilePath(dir string, fID uint32, fType fdinfo.FdTypes) (string, error) {
 	var err error
 	// Get open files
 	if filesImg == nil {
-		filesImg, err = getImg(filepath.Join(dir, "files.img"))
+		filesImg, err = getImg(filepath.Join(dir, "files.img"), &fdinfo.FileEntry{})
 		if err != nil {
 			return "", err
 		}
@@ -156,7 +156,7 @@ func getRegFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, err
 	}
 
 	if regImg == nil {
-		regImg, err = getImg(filepath.Join(dir, "reg-files.img"))
+		regImg, err = getImg(filepath.Join(dir, "reg-files.img"), &regfile.RegFileEntry{})
 		if err != nil {
 			return "", err
 		}
@@ -182,7 +182,7 @@ func getPipeFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, er
 	}
 
 	if pipeImg == nil {
-		pipeImg, err = getImg(filepath.Join(dir, "pipes.img"))
+		pipeImg, err = getImg(filepath.Join(dir, "pipes.img"), &pipe.PipeEntry{})
 		if err != nil {
 			return "", err
 		}
@@ -213,7 +213,7 @@ func getUnixSkFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, 
 	}
 
 	if unixSkImg == nil {
-		unixSkImg, err = getImg(filepath.Join(dir, "unixsk.img"))
+		unixSkImg, err = getImg(filepath.Join(dir, "unixsk.img"), &sk_unix.UnixSkEntry{})
 		if err != nil {
 			return "", err
 		}

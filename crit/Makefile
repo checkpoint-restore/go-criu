@@ -1,7 +1,7 @@
 GO ?= go
 CRIU ?= criu
 
-bin/crit: cmd/cli.go
+bin/crit: cmd/main.go
 	$(GO) build ${GOFLAGS} -o $@ $^
 
 ../test/loop/loop:

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
 	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
 	"google.golang.org/protobuf/proto"
@@ -15,12 +14,12 @@ import (
 
 // decodeImg identifies the type of image file
 // and calls the appropriate decode handler
-func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
-	img := CriuImage{}
+func decodeImg(f *os.File, entryType proto.Message, noPayload bool) (*CriuImage, error) {
+	img := CriuImage{EntryType: entryType}
 	var err error
 
 	// Identify magic
-	if img.Magic, err = readMagic(f); err != nil {
+	if img.Magic, err = ReadMagic(f); err != nil {
 		return nil, err
 	}
 
@@ -74,10 +73,7 @@ func (img *CriuImage) decodeDefault(
 			return err
 		}
 		// Create proto struct to hold payload
-		payload, err := images.ProtoHandler(img.Magic)
-		if err != nil {
-			return err
-		}
+		payload := proto.Clone(img.EntryType)
 		payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
 		payloadBuf := make([]byte, payloadSize)
 		if _, err := f.Read(payloadBuf); err != nil {

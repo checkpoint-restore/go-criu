@@ -2,6 +2,7 @@ package crit
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
@@ -14,8 +15,14 @@ const (
 
 // Helper function to load stats file into Go struct
 func getStats(path string) (*stats.StatsEntry, error) {
-	c := New(path, "", "", false, false)
-	statsImg, err := c.Decode()
+	statsFile, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer statsFile.Close()
+
+	c := New(statsFile, nil, "", false, false)
+	statsImg, err := c.Decode(&stats.StatsEntry{})
 	if err != nil {
 		return nil, err
 	}

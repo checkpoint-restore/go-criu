@@ -20,7 +20,7 @@ func encodeImg(img *CriuImage, f *os.File) error {
 	// Write magic
 	magic, ok := magicMap.ByName[img.Magic]
 	if !ok {
-		return errors.New(fmt.Sprint("Unknown magic ", img.Magic))
+		return errors.New(fmt.Sprint("unknown magic ", img.Magic))
 	}
 	magicBuf := make([]byte, 4)
 	if img.Magic != "INVENTORY" {
