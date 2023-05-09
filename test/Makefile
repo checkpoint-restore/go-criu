@@ -20,11 +20,10 @@ GO_VALIDATION_ERR = Go version is not supported. Please update to at least $(MIN
 
 all: $(TEST_BINARIES) phaul-test
 	mkdir -p image
-	PID=$$(piggie/piggie) && { \
+	PID=$$(piggie/piggie) && \
+	trap 'pkill -9 piggie' INT EXIT TERM && \
 	./test dump $$PID image && \
-	./test restore image; \
-	pkill -9 piggie; \
-	}
+	./test restore image
 	rm -rf image
 
 check-go-version:
@@ -49,10 +48,9 @@ phaul/phaul: phaul/main.go
 
 phaul-test: $(TEST_BINARIES)
 	rm -rf image
-	PID=$$(piggie/piggie) && { \
-	phaul/phaul $$PID; \
-	pkill -9 piggie; \
-	}
+	PID=$$(piggie/piggie) && \
+	trap 'pkill -9 piggie' INT EXIT TERM && \
+	phaul/phaul $$PID
 
 crit-test:
 	$(MAKE) -C crit
@@ -80,16 +78,14 @@ crit/crit-test.coverage: check-go-version crit/*.go
 coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
-	PID=$$(piggie/piggie) && { \
+	PID=$$(piggie/piggie) && \
+	trap 'pkill -9 piggie' INT EXIT TERM && \
 	GOCOVERDIR=${COVERAGE_PATH} ./test.coverage dump $$PID image && \
-	GOCOVERDIR=${COVERAGE_PATH} ./test.coverage restore image; \
-	pkill -9 piggie; \
-	}
+	GOCOVERDIR=${COVERAGE_PATH} ./test.coverage restore image
 	rm -rf image
-	PID=$$(piggie/piggie) && { \
-	GOCOVERDIR=${COVERAGE_PATH} phaul/phaul.coverage $$PID; \
-	pkill -9 piggie; \
-	}
+	PID=$$(piggie/piggie) && \
+	trap 'pkill -9 piggie' INT EXIT TERM && \
+	GOCOVERDIR=${COVERAGE_PATH} phaul/phaul.coverage $$PID
 	cd crit/ && GOCOVERDIR=${COVERAGE_PATH} ./crit-test.coverage
 	$(MAKE) -C ../crit/ unit-test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-crit-unit-test"
 	$(MAKE) -C crit/ e2e-test GOCOVERDIR=${COVERAGE_PATH}
