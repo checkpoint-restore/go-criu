@@ -33,7 +33,6 @@ function recode_test {
 	done
 }
 
-
 function command_test {
 	PROTO_IN="$TEST_IMG_DIR"/inventory.img
 	JSON_IN=$(mktemp -p "$TEST_IMG_DIR" tmp.XXXXXXXXXX.json)
@@ -67,6 +66,10 @@ function command_test {
 	$CRIT encode -i "$PROTO_IN" || true
 	$CRIT encode -i "$PROTO_IN" -o "$OUT" || true
 	$CRIT encode -i "$PROTO_IN" > "$OUT" || true
+
+	# test info and show commands
+	$CRIT info "$PROTO_IN" || exit 1
+	$CRIT show "$PROTO_IN" || exit 1
 
 	# explore image directory
 	$CRIT x "$TEST_IMG_DIR" ps || exit 1
