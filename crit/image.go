@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
 // CriuImage represents a CRIU binary image file
 type CriuImage struct {
-	Magic   string       `json:"magic"`
-	Entries []*CriuEntry `json:"entries"`
+	Magic     string        `json:"magic"`
+	Entries   []*CriuEntry  `json:"entries"`
+	EntryType proto.Message `json:"-"`
 }
 
 // CriuEntry represents a single entry in an image
@@ -99,13 +101,10 @@ func splitJSONData(data []byte) ([]byte, string) {
 func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 	for _, data := range imgData.JSONEntries {
 		// Create proto struct to hold payload
-		payload, err := images.ProtoHandler(img.Magic)
-		if err != nil {
-			return err
-		}
+		payload := proto.Clone(img.EntryType)
 		jsonPayload, extraPayload := splitJSONData(data)
 		// Handle proto data
-		if err = protojson.Unmarshal(jsonPayload, payload); err != nil {
+		if err := protojson.Unmarshal(jsonPayload, payload); err != nil {
 			return err
 		}
 		img.Entries = append(img.Entries, &CriuEntry{
@@ -120,7 +119,7 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 // Special handler for ghost image
 func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 	// Process primary entry
-	entry := CriuEntry{Message: &images.GhostFileEntry{}}
+	entry := CriuEntry{Message: &ghost_file.GhostFileEntry{}}
 	jsonPayload, extraPayload := splitJSONData(imgData.JSONEntries[0])
 	if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 		return err
@@ -135,7 +134,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 
 	// Process chunks
 	for _, data := range imgData.JSONEntries[1:] {
-		entry = CriuEntry{Message: &images.GhostChunkEntry{}}
+		entry = CriuEntry{Message: &ghost_file.GhostChunkEntry{}}
 		jsonPayload, extraPayload = splitJSONData(data)
 		if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 			return err
@@ -150,7 +149,7 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 // Special handler for pagemap image
 func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	// First entry is pagemap head
-	var payload proto.Message = &images.PagemapHead{}
+	var payload proto.Message = &pagemap.PagemapHead{}
 	for _, data := range imgData.JSONEntries {
 		entry := CriuEntry{Message: payload}
 		if err := protojson.Unmarshal(data, entry.Message); err != nil {
@@ -158,7 +157,7 @@ func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 		}
 		img.Entries = append(img.Entries, &entry)
 		// Create struct for next entry
-		payload = &images.PagemapEntry{}
+		payload = &pagemap.PagemapEntry{}
 	}
 
 	return nil

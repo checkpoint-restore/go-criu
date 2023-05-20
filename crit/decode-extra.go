@@ -8,7 +8,13 @@ import (
 	"io"
 	"os"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	bpfmap_data "github.com/checkpoint-restore/go-criu/v6/crit/images/bpfmap-data"
+	ipc_msg "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-msg"
+	ipc_sem "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-sem"
+	ipc_shm "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-shm"
+	pipe_data "github.com/checkpoint-restore/go-criu/v6/crit/images/pipe-data"
+	sk_packet "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-packet"
+	tcp_stream "github.com/checkpoint-restore/go-criu/v6/crit/images/tcp-stream"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -19,7 +25,7 @@ func decodePipesData(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.PipeDataEntry)
+	p, ok := payload.(*pipe_data.PipeDataEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -45,7 +51,7 @@ func decodeSkQueues(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.SkPacketEntry)
+	p, ok := payload.(*sk_packet.SkPacketEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -76,7 +82,7 @@ func decodeTCPStream(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.TcpStreamEntry)
+	p, ok := payload.(*tcp_stream.TcpStreamEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -113,7 +119,7 @@ func decodeBpfmapData(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.BpfmapDataEntry)
+	p, ok := payload.(*bpfmap_data.BpfmapDataEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -139,7 +145,7 @@ func decodeIpcSem(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.IpcSemEntry)
+	p, ok := payload.(*ipc_sem.IpcSemEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -178,7 +184,7 @@ func decodeIpcShm(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.IpcShmEntry)
+	p, ok := payload.(*ipc_shm.IpcShmEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -210,7 +216,7 @@ func decodeIpcMsg(
 	payload proto.Message,
 	noPayload bool,
 ) (string, error) {
-	p, ok := payload.(*images.IpcMsgEntry)
+	p, ok := payload.(*ipc_msg.IpcMsgEntry)
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
@@ -234,7 +240,7 @@ func decodeIpcMsg(
 		if _, err = f.Read(msgBuf); err != nil {
 			return "", err
 		}
-		msg := &images.IpcMsg{}
+		msg := &ipc_msg.IpcMsg{}
 		if err = proto.Unmarshal(msgBuf, msg); err != nil {
 			return "", err
 		}

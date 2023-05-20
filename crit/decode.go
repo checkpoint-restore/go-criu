@@ -7,18 +7,19 @@ import (
 	"io"
 	"os"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
 	"google.golang.org/protobuf/proto"
 )
 
 // decodeImg identifies the type of image file
 // and calls the appropriate decode handler
-func decodeImg(f *os.File, noPayload bool) (*CriuImage, error) {
-	img := CriuImage{}
+func decodeImg(f *os.File, entryType proto.Message, noPayload bool) (*CriuImage, error) {
+	img := CriuImage{EntryType: entryType}
 	var err error
 
 	// Identify magic
-	if img.Magic, err = readMagic(f); err != nil {
+	if img.Magic, err = ReadMagic(f); err != nil {
 		return nil, err
 	}
 
@@ -72,10 +73,7 @@ func (img *CriuImage) decodeDefault(
 			return err
 		}
 		// Create proto struct to hold payload
-		payload, err := images.ProtoHandler(img.Magic)
-		if err != nil {
-			return err
-		}
+		payload := proto.Clone(img.EntryType)
 		payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
 		payloadBuf := make([]byte, payloadSize)
 		if _, err := f.Read(payloadBuf); err != nil {
@@ -101,7 +99,7 @@ func (img *CriuImage) decodeDefault(
 func (img *CriuImage) decodePagemap(f *os.File) error {
 	sizeBuf := make([]byte, 4)
 	// First entry is pagemap head
-	var payload proto.Message = &images.PagemapHead{}
+	var payload proto.Message = &pagemap.PagemapHead{}
 	// Read payload size and payload until EOF
 	for {
 		if n, err := f.Read(sizeBuf); err != nil {
@@ -122,7 +120,7 @@ func (img *CriuImage) decodePagemap(f *os.File) error {
 		entry := CriuEntry{Message: payload}
 		img.Entries = append(img.Entries, &entry)
 		// Create struct for next entry
-		payload = &images.PagemapEntry{}
+		payload = &pagemap.PagemapEntry{}
 	}
 	return nil
 }
@@ -134,7 +132,7 @@ func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 		return err
 	}
 	// Create proto struct for primary entry
-	payload := &images.GhostFileEntry{}
+	payload := &ghost_file.GhostFileEntry{}
 	payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
 	payloadBuf := make([]byte, payloadSize)
 	if _, err := f.Read(payloadBuf); err != nil {
@@ -156,7 +154,7 @@ func (img *CriuImage) decodeGhostFile(f *os.File, noPayload bool) error {
 				return err
 			}
 			// Create proto struct for chunk
-			payload := &images.GhostChunkEntry{}
+			payload := &ghost_file.GhostChunkEntry{}
 			payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
 			payloadBuf := make([]byte, payloadSize)
 			if _, err := f.Read(payloadBuf); err != nil {

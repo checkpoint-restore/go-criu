@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit"
+	"github.com/checkpoint-restore/go-criu/v6/crit/cli"
 )
 
 const testImgDir = "test-imgs"
@@ -31,10 +32,25 @@ func main() {
 func recodeImgs(imgs []string) error {
 	for _, img := range imgs {
 		log.Println("===", img)
+		imgFile, err := os.Open(img)
+		if err != nil {
+			return err
+		}
+		defer imgFile.Close()
 		testImg := fmt.Sprintf("%s.test.img", img)
-		c := crit.New(img, testImg, "", false, false)
+		testImgFile, err := os.Create(testImg)
+		if err != nil {
+			return err
+		}
+		defer testImgFile.Close()
+
+		c := crit.New(imgFile, testImgFile, "", false, false)
+		entryType, err := cli.GetEntryTypeFromImg(imgFile)
+		if err != nil {
+			return err
+		}
 		// Decode the binary image file
-		decodedImg, err := c.Decode()
+		decodedImg, err := c.Decode(entryType)
 		if err != nil {
 			return errors.New(fmt.Sprint("[DECODE]: ", err))
 		}

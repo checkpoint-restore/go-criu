@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images"
+	ipc_msg "github.com/checkpoint-restore/go-criu/v6/crit/images/ipc-msg"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -91,7 +91,7 @@ func encodeIpcMsg(extra string) ([]byte, error) {
 	sizeBuf := make([]byte, 4)
 
 	for i := 0; i < len(extraEntries)/2; i++ {
-		msg := &images.IpcMsg{}
+		msg := &ipc_msg.IpcMsg{}
 		// Unmarshal JSON into proto struct
 		if err := protojson.Unmarshal([]byte(extraEntries[i]), msg); err != nil {
 			return nil, err

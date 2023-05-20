@@ -90,8 +90,8 @@ coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	$(MAKE) -C ../crit/ unit-test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-crit-unit-test"
 	$(MAKE) -C crit/ e2e-test GOCOVERDIR=${COVERAGE_PATH}
 	$(MAKE) -C crit/ clean
-	# Generate coverage for ../scripts
-	$(MAKE) -C ../scripts/ test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-scripts-unit-test" GOCOVERDIR="${COVERAGE_PATH}"
+	# Generate coverage for ../scripts/magic-gen
+	$(MAKE) -C ../scripts/magic-gen test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-scripts-unit-test" GOCOVERDIR="${COVERAGE_PATH}"
 	# Print coverage from this run
 	$(GO) tool covdata percent -i=${COVERAGE_PATH}
 	$(GO) tool covdata textfmt -i=${COVERAGE_PATH} -o ${COVERAGE_PATH}/coverage.out
