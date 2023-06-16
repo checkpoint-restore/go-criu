@@ -16,6 +16,8 @@ test-imgs: ../loop/loop
 	mkdir -p $@
 	$(CRIU) dump -v4 -o dump.log -D $@ -t $(PID)
 	$(CRIU) restore -v4 -o restore.log -D $@ -d
+	cp /proc/${PID}/environ $@
+	cp /proc/${PID}/cmdline $@
 	pkill -9 loop
 
 ../../crit/bin/crit:

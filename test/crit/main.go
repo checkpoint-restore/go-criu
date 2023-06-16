@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/checkpoint-restore/go-criu/v6/crit"
 	"github.com/checkpoint-restore/go-criu/v6/crit/cli"
+	"github.com/checkpoint-restore/go-criu/v6/crit/images/pstree"
 )
 
 const testImgDir = "test-imgs"
@@ -24,6 +26,11 @@ func main() {
 	}
 	// Run recode test
 	if err = recodeImgs(imgs); err != nil {
+		log.Fatal(err)
+	}
+
+	// Run test for memory pages reading features
+	if err = readMemoryPages(); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("=== PASS")
@@ -123,4 +130,62 @@ nextFile:
 	}
 
 	return imgs, nil
+}
+
+// readMemoryPages reads and compares process arguments
+// and environment variables from memory pages and corresponding test files.
+func readMemoryPages() error {
+	psTreeFile, err := os.Open(filepath.Join(testImgDir, "pstree.img"))
+	if err != nil {
+		return err
+	}
+	defer psTreeFile.Close()
+
+	c := crit.New(psTreeFile, nil, testImgDir, false, true)
+
+	psTreeImg, err := c.Decode(&pstree.PstreeEntry{})
+	if err != nil {
+		return err
+	}
+
+	pid := psTreeImg.Entries[0].Message.(*pstree.PstreeEntry).GetPid()
+
+	mr, err := crit.NewMemoryReader(testImgDir, pid, os.Getpagesize())
+	if err != nil {
+		return err
+	}
+
+	// Retrieve process arguments from memory pages
+	argsBuff, err := mr.GetPsArgs()
+	if err != nil {
+		return err
+	}
+
+	// Read process environment variables from the environ test file
+	testFileArgs, err := ioutil.ReadFile(filepath.Join(testImgDir, "cmdline"))
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(testFileArgs, argsBuff.Bytes()) {
+		return errors.New("process arguments do not match")
+	}
+
+	// Retrieve process environment variables from memory pages
+	envVarsBuffer, err := mr.GetPsEnvVars()
+	if err != nil {
+		return err
+	}
+
+	// Read process environment variables from the environ test file
+	envVarsTestFile, err := ioutil.ReadFile(filepath.Join(testImgDir, "environ"))
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(envVarsTestFile, envVarsBuffer.Bytes()) {
+		return errors.New("process environment variables do not match")
+	}
+
+	return nil
 }
