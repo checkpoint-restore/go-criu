@@ -77,6 +77,7 @@ type Fd struct {
 // File represents a single opened file
 type File struct {
 	Fd   string `json:"fd"`
+	Type string `json:"type,omitempty"`
 	Path string `json:"path"`
 }
 
@@ -114,6 +115,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			}
 			file := File{
 				Fd:   strconv.FormatUint(uint64(fdInfo.GetFd()), 10),
+				Type: fdInfo.GetType().String(),
 				Path: filePath,
 			}
 			fdEntry.Files = append(fdEntry.Files, &file)
