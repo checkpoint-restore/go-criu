@@ -139,7 +139,7 @@ func getFilePath(dir string, fID uint32, fType fdinfo.FdTypes) (string, error) {
 	case fdinfo.FdTypes_UNIXSK:
 		filePath, err = getUnixSkFilePath(dir, file, fID)
 	default:
-		filePath = fmt.Sprintf("%s.%d", fdinfo.FdTypes_name[int32(fType)], fID)
+		filePath = fmt.Sprintf("%s.%d", fType.String(), fID)
 	}
 
 	return filePath, err
