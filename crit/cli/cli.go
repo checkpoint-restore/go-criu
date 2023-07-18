@@ -220,9 +220,9 @@ var infoCmd = &cobra.Command{
 
 // The `crit x` command
 var xCmd = &cobra.Command{
-	Use:   "x DIR {ps|fd|mem|rss}",
+	Use:   "x DIR {ps|fd|mem|rss|sk}",
 	Short: "Explore the image directory",
-	Long:  "Explore the image directory with one of (ps, fd, mem, rss) options",
+	Long:  "Explore the image directory with one of (ps, fd, mem, rss, sk) options",
 	// Exactly two arguments are required:
 	// * Path of the input directory
 	// * Explore type
@@ -248,8 +248,10 @@ var xCmd = &cobra.Command{
 			xData, err = c.ExploreMems()
 		case "rss":
 			xData, err = c.ExploreRss()
+		case "sk":
+			xData, err = c.ExploreSk()
 		default:
-			err = errors.New("invalid explore type (supported: {ps|fd|mem|rss})")
+			err = errors.New("invalid explore type (supported: {ps|fd|mem|rss|sk})")
 		}
 		if err != nil {
 			log.Fatal(fmt.Errorf("error exploring directory: %w", err))

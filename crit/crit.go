@@ -25,6 +25,7 @@ type Critter interface {
 	ExploreFds() ([]*Fd, error)
 	ExploreMems() ([]*MemMap, error)
 	ExploreRss() ([]*RssMap, error)
+	ExploreSk() ([]*Sk, error)
 }
 
 // crit implements the Critter interface. It contains:
