@@ -50,7 +50,7 @@ jobs:
       run: |
         if [ "${{ matrix.criu_branch }}" = "criu-dev" ]; then
           # First update protobuf. It is too old in the Ubuntu image.
-          curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v22.2/protoc-22.2-linux-x86_64.zip
+          curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip
           sudo unzip -o protoc.zip -d /usr
           # We need to use the protobuf definitions from the criu-dev
           # branch as it might have changed.
