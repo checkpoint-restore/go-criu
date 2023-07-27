@@ -1,8 +1,10 @@
 GO ?= go
 CRIU ?= criu
+CRIT_SRC := $(shell find . -type f -name '*.go')
+CRIT_CLI := cmd/main.go
 
-bin/crit: cmd/main.go
-	$(GO) build ${GOFLAGS} -o $@ $^
+bin/crit: $(CRIT_SRC)
+	$(GO) build ${GOFLAGS} -o $@ $(CRIT_CLI)
 
 ../test/loop/loop:
 	$(MAKE) -C ../test/loop
