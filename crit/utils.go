@@ -44,13 +44,13 @@ func ReadMagic(f *os.File) (string, error) {
 
 // Helper to convert bytes into a more readable unit
 func countBytes(n int64) string {
-	const UNIT int64 = 1024
-	if n < UNIT {
+	const unit int64 = 1024
+	if n < unit {
 		return fmt.Sprint(n, " B")
 	}
-	div, exp := UNIT, 0
-	for i := n / UNIT; i >= UNIT; i /= UNIT {
-		div *= UNIT
+	div, exp := unit, 0
+	for i := n / unit; i >= unit; i /= unit {
+		div *= unit
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
@@ -152,7 +152,7 @@ func getRegFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, err
 		if file.GetReg() != nil {
 			return file.GetReg().GetName(), nil
 		}
-		return "Unknown path", nil
+		return "unknown", nil
 	}
 
 	if regImg == nil {
@@ -168,7 +168,7 @@ func getRegFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, err
 		}
 	}
 
-	return "Unknown path", nil
+	return "unknown", nil
 }
 
 // Helper to get file path of pipe files
