@@ -24,6 +24,10 @@ type MemoryReader struct {
 	pagemapEntries []*pagemap.PagemapEntry
 }
 
+func (mr *MemoryReader) GetPagesID() uint32 {
+	return mr.pagesID
+}
+
 // NewMemoryReader creates a new instance of MemoryReader with all the fields populated
 func NewMemoryReader(checkpointDir string, pid uint32, pageSize int) (*MemoryReader, error) {
 	if pageSize == 0 {
