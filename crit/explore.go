@@ -71,7 +71,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 // Fd represents the file descriptors opened in a single process
 type Fd struct {
 	PId   uint32  `json:"pId"`
-	Files []*File `json:"files,omitempty"`
+	Files []*File `json:"files"`
 }
 
 // File represents a single opened file
@@ -144,6 +144,11 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			Fd:   "root",
 			Path: filePath,
 		})
+
+		// Omit if the process has no file descriptors
+		if len(fdEntry.Files) == 0 {
+			continue
+		}
 
 		fds = append(fds, &fdEntry)
 	}
