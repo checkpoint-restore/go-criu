@@ -232,3 +232,17 @@ func getUnixSkFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, 
 
 	return "unix[?]", nil
 }
+
+// FindPs performs a short-circuiting depth-first search to find
+// a process with a given PID in a process tree.
+func (ps *PsTree) FindPs(pid uint32) *PsTree {
+	if ps.PID == pid {
+		return ps
+	}
+	for _, child := range ps.Children {
+		if process := child.FindPs(pid); process != nil {
+			return process
+		}
+	}
+	return nil
+}
