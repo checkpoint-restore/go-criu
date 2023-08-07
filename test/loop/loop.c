@@ -35,7 +35,7 @@ int main(void)
 			exit(1);
 		}
 
-		// Create a file descriptor for "crit x ./ fds" test
+		// Create a file descriptor for "crit x ./ fd" test
 		open("/dev/null", O_RDONLY);
 
 		chdir("/");

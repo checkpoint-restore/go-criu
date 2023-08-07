@@ -4,9 +4,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/fdinfo"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/pipe"
@@ -44,13 +46,13 @@ func ReadMagic(f *os.File) (string, error) {
 
 // Helper to convert bytes into a more readable unit
 func countBytes(n int64) string {
-	const UNIT int64 = 1024
-	if n < UNIT {
+	const unit int64 = 1024
+	if n < unit {
 		return fmt.Sprint(n, " B")
 	}
-	div, exp := UNIT, 0
-	for i := n / UNIT; i >= UNIT; i /= UNIT {
-		div *= UNIT
+	div, exp := unit, 0
+	for i := n / unit; i >= unit; i /= unit {
+		div *= unit
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
@@ -110,25 +112,35 @@ var (
 	filesImg, regImg, pipeImg, unixSkImg *CriuImage
 )
 
-// Helper to get file path for exploring file descriptors
-func getFilePath(dir string, fID uint32, fType fdinfo.FdTypes) (string, error) {
-	var filePath string
+// Helper to fetch a file if it exists in files.img
+func getFile(dir string, fID uint32) (*fdinfo.FileEntry, error) {
 	var err error
-	// Get open files
 	if filesImg == nil {
 		filesImg, err = getImg(filepath.Join(dir, "files.img"), &fdinfo.FileEntry{})
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
-	// Check if file entry is present
 	var file *fdinfo.FileEntry
 	for _, entry := range filesImg.Entries {
 		file = entry.Message.(*fdinfo.FileEntry)
 		if file.GetId() == fID {
-			break
+			return file, nil
 		}
+	}
+
+	return nil, nil
+}
+
+// Helper to get file path for exploring file descriptors
+func getFilePath(dir string, fID uint32, fType fdinfo.FdTypes) (string, error) {
+	var filePath string
+	var err error
+	// Fetch the file, if it exists in file.img
+	file, err := getFile(dir, fID)
+	if err != nil {
+		return "", err
 	}
 
 	switch fType {
@@ -152,7 +164,7 @@ func getRegFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, err
 		if file.GetReg() != nil {
 			return file.GetReg().GetName(), nil
 		}
-		return "Unknown path", nil
+		return "unknown", nil
 	}
 
 	if regImg == nil {
@@ -168,7 +180,7 @@ func getRegFilePath(dir string, file *fdinfo.FileEntry, fID uint32) (string, err
 		}
 	}
 
-	return "Unknown path", nil
+	return "unknown", nil
 }
 
 // Helper to get file path of pipe files
@@ -245,4 +257,130 @@ func (ps *PsTree) FindPs(pid uint32) *PsTree {
 		}
 	}
 	return nil
+}
+
+// Helper to convert slice of uint32 into IP address string
+func processIP(parts []uint32) string {
+	// IPv4
+	if len(parts) == 1 {
+		ip := make(net.IP, net.IPv4len)
+		binary.LittleEndian.PutUint32(ip, parts[0])
+		return ip.String()
+	}
+	// IPv6
+	if len(parts) == 4 {
+		ip := make(net.IP, net.IPv6len)
+		for _, part := range parts {
+			binary.LittleEndian.PutUint32(ip, part)
+		}
+		return ip.String()
+	}
+	// Invalid
+	return ""
+}
+
+// tcpState represents the state of a TCP connection.
+type tcpState uint8
+
+// https://github.com/torvalds/linux/blob/999f6631/include/net/tcp_states.h#L12
+const (
+	tcpEstablished tcpState = iota + 1
+	tcpSynSent
+	tcpSynReceived
+	tcpFinWait1
+	tcpFinWait2
+	tcpTimeWait
+	tcpClose
+	tcpCloseWait
+	tcpLastAck
+	tcpListen
+	tcpClosing
+	tcpNewSynRecv
+)
+
+var states = map[tcpState]string{
+	tcpEstablished: "ESTABLISHED",
+	tcpSynSent:     "SYN_SENT",
+	tcpSynReceived: "SYN_RECEIVED",
+	tcpFinWait1:    "FIN_WAIT_1",
+	tcpFinWait2:    "FIN_WAIT_2",
+	tcpTimeWait:    "TIME_WAIT",
+	tcpClose:       "CLOSE",
+	tcpCloseWait:   "CLOSE_WAIT",
+	tcpLastAck:     "LAST_ACK",
+	tcpListen:      "LISTEN",
+	tcpClosing:     "CLOSING",
+	tcpNewSynRecv:  "NEW_SYN_RECV",
+}
+
+// Helper to identify socket state
+func getSkState(state tcpState) string {
+	if stateName, ok := states[state]; ok {
+		return stateName
+	}
+	return ""
+}
+
+// Helper to identify address family
+func getAddressFamily(family uint32) string {
+	switch family {
+	case syscall.AF_UNIX:
+		return "UNIX"
+	case syscall.AF_NETLINK:
+		return "NETLINK"
+	case syscall.AF_BRIDGE:
+		return "BRIDGE"
+	case syscall.AF_KEY:
+		return "KEY"
+	case syscall.AF_PACKET:
+		return "PACKET"
+	case syscall.AF_INET:
+		return "IPV4"
+	case syscall.AF_INET6:
+		return "IPV6"
+	default:
+		return ""
+	}
+}
+
+// Helper to identify socket type
+func getSkType(skType uint32) string {
+	switch skType {
+	case syscall.SOCK_STREAM:
+		return "STREAM"
+	case syscall.SOCK_DGRAM:
+		return "DGRAM"
+	case syscall.SOCK_SEQPACKET:
+		return "SEQPACKET"
+	case syscall.SOCK_RAW:
+		return "RAW"
+	case syscall.SOCK_RDM:
+		return "RDM"
+	case syscall.SOCK_PACKET:
+		return "PACKET"
+	default:
+		return ""
+	}
+}
+
+// Helper to identify socket protocol
+func getSkProtocol(protocol uint32) string {
+	switch protocol {
+	case syscall.IPPROTO_ICMP:
+		return "ICMP"
+	case syscall.IPPROTO_ICMPV6:
+		return "ICMPV6"
+	case syscall.IPPROTO_IGMP:
+		return "IGMP"
+	case syscall.IPPROTO_RAW:
+		return "RAW"
+	case syscall.IPPROTO_TCP:
+		return "TCP"
+	case syscall.IPPROTO_UDP:
+		return "UDP"
+	case syscall.IPPROTO_UDPLITE:
+		return "UDPLITE"
+	default:
+		return ""
+	}
 }

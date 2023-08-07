@@ -43,3 +43,41 @@ func TestFindPs(t *testing.T) {
 		t.Errorf("FindPs(%d) returned a process, expected nil", nonExistentPID)
 	}
 }
+
+func TestCountBytes(t *testing.T) {
+	tests := []struct {
+		input int64
+		want  string
+	}{
+		{1000, "1000 B"},
+		{5120, "5.0 KB"},
+		{100000, "97.7 KB"},
+	}
+
+	for _, test := range tests {
+		got := countBytes(test.input)
+		if got != test.want {
+			t.Errorf("want: %s, got: %s", test.want, got)
+		}
+	}
+}
+
+func TestProcessIP(t *testing.T) {
+	tests := []struct {
+		input []uint32
+		want  string
+	}{
+		{[]uint32{}, ""},
+		{[]uint32{0}, "0.0.0.0"},
+		{[]uint32{16777343}, "127.0.0.1"},
+		{[]uint32{0, 0, 0, 0}, "::"},
+		{[]uint32{0, 0, 4294901760, 16777343}, "7f00:1::"},
+	}
+
+	for _, test := range tests {
+		got := processIP(test.input)
+		if got != test.want {
+			t.Errorf("want: %s, got: %s", test.want, got)
+		}
+	}
+}

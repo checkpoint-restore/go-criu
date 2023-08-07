@@ -73,9 +73,10 @@ function command_test {
 
 	# explore image directory
 	$CRIT x "$TEST_IMG_DIR" ps || exit 1
-	$CRIT x "$TEST_IMG_DIR" fds || exit 1
-	$CRIT x "$TEST_IMG_DIR" mems || exit 1
+	$CRIT x "$TEST_IMG_DIR" fd || exit 1
+	$CRIT x "$TEST_IMG_DIR" mem || exit 1
 	$CRIT x "$TEST_IMG_DIR" rss || exit 1
+	$CRIT x "$TEST_IMG_DIR" sk || exit 1
 }
 
 echo "Generating image list..."

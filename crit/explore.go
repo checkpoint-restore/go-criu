@@ -71,7 +71,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 // Fd represents the file descriptors opened in a single process
 type Fd struct {
 	PId   uint32  `json:"pId"`
-	Files []*File `json:"files,omitempty"`
+	Files []*File `json:"files"`
 }
 
 // File represents a single opened file
@@ -144,6 +144,11 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			Fd:   "root",
 			Path: filePath,
 		})
+
+		// Omit if the process has no file descriptors
+		if len(fdEntry.Files) == 0 {
+			continue
+		}
 
 		fds = append(fds, &fdEntry)
 	}
@@ -367,4 +372,115 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 	}
 
 	return rssMaps, nil
+}
+
+// Sk represents the sockets associated with a single process
+type Sk struct {
+	PId     uint32    `json:"pId"`
+	Sockets []*Socket `json:"sockets"`
+}
+
+// Socket represents a single socket
+type Socket struct {
+	Fd       uint32 `json:"fd"`
+	FdType   string `json:"fdType"`
+	Family   string `json:"family,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
+	Type     string `json:"type,omitempty"`
+	State    string `json:"state,omitempty"`
+	SrcAddr  string `json:"srcAddr,omitempty"`
+	SrcPort  uint32 `json:"srcPort,omitempty"`
+	DestAddr string `json:"destAddr,omitempty"`
+	DestPort uint32 `json:"destPort,omitempty"`
+	SendBuf  string `json:"sendBuf,omitempty"`
+	RecvBuf  string `json:"recvBuf,omitempty"`
+}
+
+// ExploreSk searches the process tree for sockets
+// and returns a list of PIDs with the associated sockets
+func (c *crit) ExploreSk() ([]*Sk, error) {
+	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
+	if err != nil {
+		return nil, err
+	}
+
+	sks := make([]*Sk, 0)
+	for _, entry := range psTreeImg.Entries {
+		process := entry.Message.(*pstree.PstreeEntry)
+		pID := process.GetPid()
+		// Get file with object IDs
+		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
+		if err != nil {
+			return nil, err
+		}
+		filesID := idsImg.Entries[0].Message.(*criu_core.TaskKobjIdsEntry).GetFilesId()
+		// Get open file descriptors
+		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)), &fdinfo.FdinfoEntry{})
+		if err != nil {
+			return nil, err
+		}
+		skEntry := Sk{PId: pID}
+		for _, fdInfoEntry := range fdInfoImg.Entries {
+			fdInfo := fdInfoEntry.Message.(*fdinfo.FdinfoEntry)
+			file, err := getFile(c.inputDirPath, fdInfo.GetId())
+			if err != nil {
+				return nil, err
+			}
+			socket := Socket{
+				Fd:     fdInfo.GetFd(),
+				FdType: fdInfo.GetType().String(),
+			}
+			switch fdInfo.GetType() {
+			case fdinfo.FdTypes_INETSK:
+				if isk := file.GetIsk(); isk != nil {
+					socket.State = getSkState(tcpState(isk.GetState()))
+					socket.Family = getAddressFamily(isk.GetFamily())
+					socket.Protocol = getSkProtocol(isk.GetProto())
+					socket.Type = getSkType(isk.GetType())
+					socket.SrcAddr = processIP(isk.GetSrcAddr())
+					socket.SrcPort = isk.GetSrcPort()
+					socket.DestAddr = processIP(isk.GetDstAddr())
+					socket.DestPort = isk.GetDstPort()
+					socket.SendBuf = countBytes(int64(isk.GetOpts().GetSoSndbuf()))
+					socket.RecvBuf = countBytes(int64(isk.GetOpts().GetSoRcvbuf()))
+				}
+			case fdinfo.FdTypes_UNIXSK:
+				if usk := file.GetUsk(); usk != nil {
+					socket.State = getSkState(tcpState(usk.GetState()))
+					socket.Type = getSkType(usk.GetType())
+					socket.SrcAddr = string(usk.GetName())
+					socket.SendBuf = countBytes(int64(usk.GetOpts().GetSoSndbuf()))
+					socket.RecvBuf = countBytes(int64(usk.GetOpts().GetSoRcvbuf()))
+				}
+			case fdinfo.FdTypes_PACKETSK:
+				if psk := file.GetPsk(); psk != nil {
+					socket.Type = getSkType(psk.GetProtocol())
+					socket.Protocol = getSkProtocol(psk.GetProtocol())
+					socket.SendBuf = countBytes(int64(psk.GetOpts().GetSoSndbuf()))
+					socket.RecvBuf = countBytes(int64(psk.GetOpts().GetSoRcvbuf()))
+				}
+			case fdinfo.FdTypes_NETLINKSK:
+				if nlsk := file.GetNlsk(); nlsk != nil {
+					socket.State = getSkState(tcpState(nlsk.GetState()))
+					socket.Protocol = getSkProtocol(nlsk.GetProtocol())
+					socket.Type = getSkType(nlsk.GetProtocol())
+					socket.SendBuf = countBytes(int64(nlsk.GetOpts().GetSoSndbuf()))
+					socket.RecvBuf = countBytes(int64(nlsk.GetOpts().GetSoRcvbuf()))
+				}
+			default:
+				continue
+			}
+
+			skEntry.Sockets = append(skEntry.Sockets, &socket)
+		}
+
+		// Omit if the process has no associated sockets
+		if len(skEntry.Sockets) == 0 {
+			continue
+		}
+
+		sks = append(sks, &skEntry)
+	}
+
+	return sks, nil
 }
