@@ -9,6 +9,7 @@ import (
 
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/mm"
 	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
+	"golang.org/x/sys/unix"
 )
 
 var sysPageSize = os.Getpagesize()
@@ -172,4 +173,23 @@ func (mr *MemoryReader) GetPsEnvVars() (*bytes.Buffer, error) {
 
 func (mr *MemoryReader) GetPagemapEntries() []*pagemap.PagemapEntry {
 	return mr.pagemapEntries
+}
+
+// GetShmemSize calculates and returns the size of shared memory used by the process.
+func (mr *MemoryReader) GetShmemSize() (int64, error) {
+	mmImg, err := getImg(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
+	if err != nil {
+		return 0, err
+	}
+
+	var size int64
+	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
+	for _, vma := range mm.Vmas {
+		// Check if VMA has the MAP_SHARED flag set in its flags
+		if vma.GetFlags()&unix.MAP_SHARED != 0 {
+			size += int64(vma.GetEnd() - vma.GetStart())
+		}
+	}
+
+	return size, nil
 }
