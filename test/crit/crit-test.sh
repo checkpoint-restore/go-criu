@@ -3,7 +3,7 @@
 set -x
 
 CRIT=../../crit/bin/crit
-TEST_IMG_DIR=test-imgs
+TEST_IMG_DIR=test-imgs/loop
 
 function gen_img_list {
 	images_list=$(find "$TEST_IMG_DIR" -regex '^[^\.]*\.img$')

@@ -4,6 +4,7 @@ test/piggie/piggie
 test/phaul/phaul
 test/phaul/phaul.coverage
 test/loop/loop
+test/mmapper/mmapper
 test/crit/crit-test
 test/crit/test-imgs
 test/crit/crit-test.coverage
