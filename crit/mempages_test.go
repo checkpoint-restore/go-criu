@@ -248,6 +248,29 @@ func TestGetPsArgsAndEnvVars(t *testing.T) {
 	}
 }
 
+func TestGetShmemSize(t *testing.T) {
+	pid, err := getTestImgPID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mr, err := NewMemoryReader(testImgsDir, pid, sysPageSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	size, err := mr.GetShmemSize()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the shared memory size is as expected (0)
+	expectedSize := int64(0)
+	if size != expectedSize {
+		t.Fatalf("Expected shared memory size: %d, but got: %d", expectedSize, size)
+	}
+}
+
 // helper function to get the PID from the test-imgs directory
 func getTestImgPID() (uint32, error) {
 	psTreeImg, err := getImg(filepath.Join(testImgsDir, "pstree.img"), &pstree.PstreeEntry{})

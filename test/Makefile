@@ -113,5 +113,6 @@ clean:
 	@rm -rf image $(COVERAGE_PATH)
 	@make -C crit/ clean
 	@make -C loop/ clean
+	@make -C mmapper/ clean
 
 .PHONY: all clean coverage codecov crit-test phaul-test check-go-version
