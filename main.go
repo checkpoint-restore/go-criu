@@ -86,17 +86,17 @@ func (c *Criu) sendAndRecv(reqB []byte) ([]byte, int, error) {
 	return respB, n, nil
 }
 
-func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) error {
+func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) (*rpc.CriuResp, error) {
 	resp, err := c.doSwrkWithResp(reqType, opts, nfy, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	respType := resp.GetType()
 	if respType != reqType {
-		return errors.New("unexpected CRIU RPC response")
+		return nil, errors.New("unexpected CRIU RPC response")
 	}
 
-	return nil
+	return resp, nil
 }
 
 func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify, features *rpc.CriuFeatures) (*rpc.CriuResp, error) {
@@ -192,22 +192,23 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 }
 
 // Dump dumps a process
-func (c *Criu) Dump(opts *rpc.CriuOpts, nfy Notify) error {
+func (c *Criu) Dump(opts *rpc.CriuOpts, nfy Notify) (*rpc.CriuResp, error) {
 	return c.doSwrk(rpc.CriuReqType_DUMP, opts, nfy)
+
 }
 
 // Restore restores a process
-func (c *Criu) Restore(opts *rpc.CriuOpts, nfy Notify) error {
+func (c *Criu) Restore(opts *rpc.CriuOpts, nfy Notify) (*rpc.CriuResp, error) {
 	return c.doSwrk(rpc.CriuReqType_RESTORE, opts, nfy)
 }
 
 // PreDump does a pre-dump
-func (c *Criu) PreDump(opts *rpc.CriuOpts, nfy Notify) error {
+func (c *Criu) PreDump(opts *rpc.CriuOpts, nfy Notify) (*rpc.CriuResp, error) {
 	return c.doSwrk(rpc.CriuReqType_PRE_DUMP, opts, nfy)
 }
 
 // StartPageServer starts the page server
-func (c *Criu) StartPageServer(opts *rpc.CriuOpts) error {
+func (c *Criu) StartPageServer(opts *rpc.CriuOpts) (*rpc.CriuResp, error) {
 	return c.doSwrk(rpc.CriuReqType_PAGE_SERVER, opts, nil)
 }
 

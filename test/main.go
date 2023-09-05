@@ -47,9 +47,9 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	}
 
 	if pre {
-		err = c.PreDump(opts, TestNfy{})
+		_, err = c.PreDump(opts, TestNfy{})
 	} else {
-		err = c.Dump(opts, TestNfy{})
+		_, err = c.Dump(opts, TestNfy{})
 	}
 	if err != nil {
 		return fmt.Errorf("dump fail: %w", err)
@@ -190,7 +190,7 @@ func main() {
 			LogFile:     proto.String("restore.log"),
 		}
 
-		err = c.Restore(opts, nil)
+		_, err = c.Restore(opts, nil)
 		if err != nil {
 			log.Fatalln("restore failed:", err)
 		}

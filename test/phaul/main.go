@@ -108,7 +108,8 @@ func (r *testRemote) doRestore() error {
 
 	cr := r.srv.GetCriu()
 	fmt.Printf("Do restore\n")
-	return cr.Restore(opts, nil)
+	_, err = cr.Restore(opts, nil)
+	return err
 }
 
 func (l *testLocal) PostDump() error {
@@ -139,7 +140,8 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 	}
 
 	fmt.Printf("Do dump\n")
-	return cr.Dump(opts, l)
+	_, err = cr.Dump(opts, l)
+	return err
 }
 
 func main() {
