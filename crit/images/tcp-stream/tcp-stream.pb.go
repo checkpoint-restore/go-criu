@@ -9,7 +9,7 @@
 package tcp_stream
 
 import (
-	_ "github.com/checkpoint-restore/go-criu/v6/crit/images/opts"
+	_ "github.com/checkpoint-restore/go-criu/v7/crit/images/opts"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
