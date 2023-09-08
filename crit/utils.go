@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/fdinfo"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/pipe"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/regfile"
-	sk_unix "github.com/checkpoint-restore/go-criu/v6/crit/images/sk-unix"
-	"github.com/checkpoint-restore/go-criu/v6/magic"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/fdinfo"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/pipe"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/regfile"
+	sk_unix "github.com/checkpoint-restore/go-criu/v7/crit/images/sk-unix"
+	"github.com/checkpoint-restore/go-criu/v7/magic"
 	"google.golang.org/protobuf/proto"
 )
 

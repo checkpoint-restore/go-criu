@@ -3,10 +3,10 @@ package phaul
 import (
 	"fmt"
 
-	"github.com/checkpoint-restore/go-criu/v6"
-	"github.com/checkpoint-restore/go-criu/v6/crit"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
-	"github.com/checkpoint-restore/go-criu/v6/rpc"
+	"github.com/checkpoint-restore/go-criu/v7"
+	"github.com/checkpoint-restore/go-criu/v7/crit"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/stats"
+	"github.com/checkpoint-restore/go-criu/v7/rpc"
 	"google.golang.org/protobuf/proto"
 )
 

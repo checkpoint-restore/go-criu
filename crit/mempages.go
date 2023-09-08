@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/mm"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/mm"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
 	"golang.org/x/sys/unix"
 )
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/stats"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/stats"
 )
 
 const (

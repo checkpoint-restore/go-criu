@@ -9,8 +9,8 @@
 package mm
 
 import (
-	_ "github.com/checkpoint-restore/go-criu/v6/crit/images/opts"
-	vma "github.com/checkpoint-restore/go-criu/v6/crit/images/vma"
+	_ "github.com/checkpoint-restore/go-criu/v7/crit/images/opts"
+	vma "github.com/checkpoint-restore/go-criu/v7/crit/images/vma"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

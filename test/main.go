@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/checkpoint-restore/go-criu/v6"
-	"github.com/checkpoint-restore/go-criu/v6/rpc"
+	"github.com/checkpoint-restore/go-criu/v7"
+	"github.com/checkpoint-restore/go-criu/v7/rpc"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	ghost_file "github.com/checkpoint-restore/go-criu/v6/crit/images/ghost-file"
-	"github.com/checkpoint-restore/go-criu/v6/crit/images/pagemap"
+	ghost_file "github.com/checkpoint-restore/go-criu/v7/crit/images/ghost-file"
+	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
