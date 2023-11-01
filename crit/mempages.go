@@ -120,7 +120,7 @@ func (mr *MemoryReader) getPage(pageNo uint64) ([]byte, error) {
 	// Iterate over pagemap entries to find the corresponding page
 	for _, m := range mr.pagemapEntries {
 		found := false
-		for i := 0; i < int(*m.NrPages); i++ {
+		for i := 0; i < int(m.GetNrPages()); i++ {
 			if m.GetVaddr()+uint64(i)*uint64(mr.pageSize) == pageNo*uint64(mr.pageSize) {
 				found = true
 				break
@@ -157,7 +157,7 @@ func (mr *MemoryReader) GetPsArgs() (*bytes.Buffer, error) {
 	}
 	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
 
-	return mr.GetMemPages(*mm.MmArgStart, *mm.MmArgEnd)
+	return mr.GetMemPages(mm.GetMmArgStart(), mm.GetMmArgEnd())
 }
 
 // GetPsArgs retrieves process environment variables from memory pages.
@@ -168,7 +168,7 @@ func (mr *MemoryReader) GetPsEnvVars() (*bytes.Buffer, error) {
 	}
 	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
 
-	return mr.GetMemPages(*mm.MmEnvStart, *mm.MmEnvEnd)
+	return mr.GetMemPages(mm.GetMmEnvStart(), mm.GetMmEnvEnd())
 }
 
 func (mr *MemoryReader) GetPagemapEntries() []*pagemap.PagemapEntry {
@@ -184,7 +184,7 @@ func (mr *MemoryReader) GetShmemSize() (int64, error) {
 
 	var size int64
 	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
-	for _, vma := range mm.Vmas {
+	for _, vma := range mm.GetVmas() {
 		// Check if VMA has the MAP_SHARED flag set in its flags
 		if vma.GetFlags()&unix.MAP_SHARED != 0 {
 			size += int64(vma.GetEnd() - vma.GetStart())
