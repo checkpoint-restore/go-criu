@@ -102,27 +102,27 @@ func featureCheck(c *criu.Criu) error {
 		return err
 	}
 
-	if *features.MemTrack != *featuresToCompare.MemTrack {
+	if features.GetMemTrack() != featuresToCompare.GetMemTrack() {
 		return fmt.Errorf(
 			"unexpected MemTrack FeatureCheck result %v:%v",
-			*features.MemTrack,
-			*featuresToCompare.MemTrack,
+			features.GetMemTrack(),
+			featuresToCompare.GetMemTrack(),
 		)
 	}
 
-	if *features.LazyPages != *featuresToCompare.LazyPages {
+	if features.GetLazyPages() != featuresToCompare.GetLazyPages() {
 		return fmt.Errorf(
 			"unexpected LazyPages FeatureCheck result %v:%v",
-			*features.LazyPages,
-			*featuresToCompare.LazyPages,
+			features.GetLazyPages(),
+			featuresToCompare.GetLazyPages(),
 		)
 	}
 
-	if *features.PidfdStore != *featuresToCompare.PidfdStore {
+	if features.GetPidfdStore() != featuresToCompare.GetPidfdStore() {
 		return fmt.Errorf(
 			"unexpected PidfdStore FeatureCheck result %v:%v",
-			*features.PidfdStore,
-			*featuresToCompare.PidfdStore,
+			features.GetPidfdStore(),
+			featuresToCompare.GetPidfdStore(),
 		)
 	}
 

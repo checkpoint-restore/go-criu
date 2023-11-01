@@ -47,7 +47,7 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 			PID:     pID,
 			PgID:    process.GetPgid(),
 			SID:     process.GetSid(),
-			Comm:    coreData.Tc.GetComm(),
+			Comm:    coreData.GetTc().GetComm(),
 			Process: process,
 			Core:    coreData,
 		}
