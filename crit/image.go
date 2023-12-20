@@ -34,7 +34,7 @@ func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 		return []byte(fmt.Sprint(`{"count":"`, c.Extra, `"}`)), nil
 	}
 
-	data, err := protojson.Marshal(c.Message)
+	data, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(c.Message)
 	if err != nil {
 		return nil, err
 	}
