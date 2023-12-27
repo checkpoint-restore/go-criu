@@ -15,9 +15,9 @@ import (
 
 // PsTree represents the process tree
 type PsTree struct {
-	PID      uint32               `json:"pId"`
-	PgID     uint32               `json:"pgId"`
-	SID      uint32               `json:"sId"`
+	PID      uint32               `json:"pid"`
+	PgID     uint32               `json:"pgid"`
+	SID      uint32               `json:"sid"`
 	Comm     string               `json:"comm"`
 	Process  *pstree.PstreeEntry  `json:"-"`
 	Core     *criu_core.CoreEntry `json:"-"`
@@ -70,8 +70,8 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 
 // Fd represents the file descriptors opened in a single process
 type Fd struct {
-	PId   uint32  `json:"pId"`
-	Files []*File `json:"files"`
+	PId   uint32  `json:"pid"`
+	Files []*File `json:"files,omitempty"`
 }
 
 // File represents a single opened file
@@ -158,7 +158,7 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 
 // MemMap represents the memory mapping of a single process
 type MemMap struct {
-	PId  uint32 `json:"pId"`
+	PId  uint32 `json:"pid"`
 	Exe  string `json:"exe"`
 	Mems []*Mem `json:"mems,omitempty"`
 }
@@ -274,7 +274,7 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 
 // RssMap represents the resident set size mapping of a single process
 type RssMap struct {
-	PId uint32 `json:"pId"`
+	PId uint32 `json:"pid"`
 	/*
 		walrus -> walruses
 		radius -> radii
@@ -286,8 +286,8 @@ type RssMap struct {
 
 // Rss represents a single resident set size mapping
 type Rss struct {
-	PhyAddr  string `json:"phyAddr,omitempty"`
-	PhyPages int64  `json:"phyPages,omitempty"`
+	PhyAddr  string `json:"phy_addr,omitempty"`
+	PhyPages int64  `json:"phy_pages,omitempty"`
 	Vmas     []*Vma `json:"vmas,omitempty"`
 	Resource string `json:"resource,omitempty"`
 }
@@ -376,24 +376,24 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 
 // Sk represents the sockets associated with a single process
 type Sk struct {
-	PId     uint32    `json:"pId"`
+	PId     uint32    `json:"pid"`
 	Sockets []*Socket `json:"sockets"`
 }
 
 // Socket represents a single socket
 type Socket struct {
 	Fd       uint32 `json:"fd"`
-	FdType   string `json:"fdType"`
+	FdType   string `json:"fd_type"`
 	Family   string `json:"family,omitempty"`
 	Protocol string `json:"protocol,omitempty"`
 	Type     string `json:"type,omitempty"`
 	State    string `json:"state,omitempty"`
-	SrcAddr  string `json:"srcAddr,omitempty"`
-	SrcPort  uint32 `json:"srcPort,omitempty"`
-	DestAddr string `json:"destAddr,omitempty"`
-	DestPort uint32 `json:"destPort,omitempty"`
-	SendBuf  string `json:"sendBuf,omitempty"`
-	RecvBuf  string `json:"recvBuf,omitempty"`
+	SrcAddr  string `json:"src_addr,omitempty"`
+	SrcPort  uint32 `json:"src_port,omitempty"`
+	DestAddr string `json:"dest_addr,omitempty"`
+	DestPort uint32 `json:"dest_port,omitempty"`
+	SendBuf  string `json:"send_buf,omitempty"`
+	RecvBuf  string `json:"recv_buf,omitempty"`
 }
 
 // ExploreSk searches the process tree for sockets
