@@ -72,8 +72,8 @@ func decodeSkQueues(
 }
 
 type tcpStreamExtra struct {
-	InQ  string `json:"inQ"`
-	OutQ string `json:"outQ"`
+	InQ  string `json:"in_q"`
+	OutQ string `json:"out_q"`
 }
 
 // Extra data handler for TCP streams
