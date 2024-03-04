@@ -230,7 +230,7 @@ func (c *Criu) GetCriuVersion() (int, error) {
 	}
 
 	if resp.GetType() != rpc.CriuReqType_VERSION {
-		return 0, fmt.Errorf("unexpected CRIU RPC response")
+		return 0, errors.New("unexpected CRIU RPC response")
 	}
 
 	version := resp.GetVersion().GetMajorNumber() * 10000

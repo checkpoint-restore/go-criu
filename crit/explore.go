@@ -328,7 +328,7 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 		for _, pagemapEntry := range pagemapImg.Entries[1:] {
 			pagemapData := pagemapEntry.Message.(*pagemap.PagemapEntry)
 			rss := Rss{
-				PhyAddr:  fmt.Sprintf("%x", pagemapData.GetVaddr()),
+				PhyAddr:  strconv.FormatUint(pagemapData.GetVaddr(), 16),
 				PhyPages: int64(pagemapData.GetNrPages()),
 			}
 
@@ -347,7 +347,7 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 				}
 
 				rss.Vmas = append(rss.Vmas, &Vma{
-					Addr:  fmt.Sprintf("%x", vmas[vmaIndex].GetStart()),
+					Addr:  strconv.FormatUint(vmas[vmaIndex].GetStart(), 16),
 					Pages: int64(vmas[vmaIndex].GetEnd()-vmas[vmaIndex].GetStart()) >> 12,
 				})
 				// Pages used by a file
