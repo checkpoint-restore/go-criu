@@ -12,6 +12,13 @@ int main(void)
 	int res = EXIT_FAILURE;
 	int start_pipe[2];
 
+	// Set a PASSWORD environment variable to test the search pattern
+	// within process memory pages using regex metacharacters.
+	if (setenv("PASSWORD", "123 Hello.*?[^]@WORLD(|x)", 1) != 0) {
+		perror("setenv");
+		return 1;
+	}
+
 	if (pipe(start_pipe)) {
 		perror("pipe failed!");
 		goto out;
