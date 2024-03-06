@@ -271,6 +271,76 @@ func TestGetShmemSize(t *testing.T) {
 	}
 }
 
+func TestSearchPattern(t *testing.T) {
+	pid, err := getTestImgPID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mr, err := NewMemoryReader(testImgsDir, pid, sysPageSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		name          string
+		pattern       string
+		context       int
+		expectedError error
+	}{
+		{
+			name:    "PATH environment variable",
+			pattern: "PATH=",
+		},
+		{
+			name:    "PATH environment variable regex",
+			pattern: `\bPATH=([^\s]+)\b`,
+		},
+		{
+			name:    "PATH environment variable regex with 10 bytes context",
+			pattern: `\bPATH=([^\s]+)\b`,
+			context: 10,
+		},
+		{
+			name:          "PATH environment variable regex with a negative context",
+			pattern:       `\bPATH=([^\s]+)\b`,
+			context:       -1,
+			expectedError: errors.New("context size cannot be negative"),
+		},
+		{
+			name:    "PATH environment variable regex with a large context",
+			pattern: `\bPATH=([^\s]+)\b`,
+			context: 100_000,
+		},
+		{
+			name:    "non existent pattern",
+			pattern: "NON_EXISTENT_PATTERN",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			matches, err := mr.SearchPattern(tc.pattern, tc.context)
+			if err != nil && tc.expectedError == nil {
+				t.Errorf("Unexpected error for pattern %s: %v", tc.pattern, err)
+			} else if err == nil && tc.expectedError != nil {
+				t.Errorf("Expected error for pattern %s: %v", tc.pattern, tc.expectedError)
+			}
+
+			for _, match := range matches {
+				content, err := mr.GetMemPages(match.Vaddr, match.Vaddr+uint64(match.Length))
+				if err != nil {
+					t.Fatalf("Failed to get memory pages: %v", err)
+				}
+
+				if !strings.Contains(match.Pattern, content.String()) {
+					t.Errorf("Expected to find %s in matched pattern %s", content.String(), match.Pattern)
+				}
+			}
+		})
+	}
+}
+
 // helper function to get the PID from the test-imgs directory
 func getTestImgPID() (uint32, error) {
 	psTreeImg, err := getImg(filepath.Join(testImgsDir, "pstree.img"), &pstree.PstreeEntry{})
