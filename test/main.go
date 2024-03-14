@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v7"
 	"github.com/checkpoint-restore/go-criu/v7/rpc"
+	"github.com/checkpoint-restore/go-criu/v7/utils"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -126,6 +128,15 @@ func featureCheck(c *criu.Criu) error {
 		)
 	}
 
+	isMemTrack := utils.IsMemTrack()
+	if isMemTrack != featuresToCompare.GetMemTrack() {
+		return fmt.Errorf(
+			"unexpected MemTrack FeatureCheck result %v:%v",
+			isMemTrack,
+			featuresToCompare.GetMemTrack(),
+		)
+	}
+
 	return nil
 }
 
@@ -139,6 +150,14 @@ func main() {
 		os.Exit(1)
 	}
 	log.Println("CRIU version", version)
+	// Compare if version from convenience function matches
+	version2, err := utils.GetCriuVersion()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if version != version2 {
+		log.Fatalf("Detected versions do not match (%d != %d)", version, version2)
+	}
 	// Check if version at least 3.2
 	result, err := c.IsCriuAtLeast(30200)
 	if err != nil {
@@ -146,6 +165,14 @@ func main() {
 	}
 	if !result {
 		log.Fatalln("CRIU version to old")
+	}
+
+	if err := utils.CheckForCriu(30200); err != nil {
+		log.Fatalln(err)
+	}
+
+	if err := utils.CheckForCriu(math.MaxInt); err == nil {
+		log.Fatalf("Checking for CRIU version %d should have failed.", math.MaxInt)
 	}
 
 	if err = featureCheck(c); err != nil {
