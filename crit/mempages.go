@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/mm"
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
@@ -192,4 +193,73 @@ func (mr *MemoryReader) GetShmemSize() (int64, error) {
 	}
 
 	return size, nil
+}
+
+// PatternMatch represents a match when searching for a pattern in memory.
+type PatternMatch struct {
+	Vaddr   uint64
+	Length  int
+	Context int
+	Pattern string
+}
+
+// SearchPattern searches for a pattern in the process memory pages.
+// If the pattern is found, it returns slices of strings containing the matched patterns
+// along with the specified context (number of bytes before and after each match).
+func (mr *MemoryReader) SearchPattern(pattern string, context int) ([]PatternMatch, error) {
+	if context < 0 {
+		return nil, errors.New("context size cannot be negative")
+	}
+
+	regexPattern, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []PatternMatch
+
+	for _, entry := range mr.pagemapEntries {
+		startAddr := entry.GetVaddr()
+		endAddr := startAddr + uint64(entry.GetNrPages())*uint64(mr.pageSize)
+
+		// Read the entire pages content
+		buffer, err := mr.GetMemPages(startAddr, endAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		// Replace null bytes in the pages content with spaces to prevent unexpected behavior
+		// during regex matching. Null bytes might cause incorrect interpretation or premature
+		// termination of strings, leading to inaccuracies in pattern matching. This step ensures
+		// accurate matching of patterns.
+		pagesContent := bytes.ReplaceAll(buffer.Bytes(), []byte{0x0}, []byte{0x20})
+
+		// Search for all matching pattern using the regular expression
+		indexes := regexPattern.FindAllIndex(pagesContent, -1)
+
+		for _, index := range indexes {
+			match := PatternMatch{
+				Vaddr:   startAddr + uint64(index[0]),
+				Length:  index[1] - index[0],
+				Context: context,
+			}
+
+			// Calculate the start and end indices for the context surrounding the match
+			startContext := index[0] - context
+			if startContext < 0 {
+				startContext = index[0]
+			}
+
+			endContext := index[1] + context
+			if endContext > buffer.Len() {
+				endContext = index[1]
+			}
+
+			match.Pattern = string(pagesContent[startContext:endContext])
+
+			results = append(results, match)
+		}
+	}
+
+	return results, nil
 }
