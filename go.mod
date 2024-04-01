@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/sys v0.18.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
