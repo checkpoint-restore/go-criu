@@ -29,18 +29,14 @@ func LoadMagic() MagicMap {
 }
 EOF
 
-if [ -n "$GOCOVERDIR" ]; then
-	export LOCALFLAGS="-cover"
-fi
-
-go run $LOCALFLAGS magicgen.go input.h output.go
+python3 magicgen.py input.h output.go
 cmp output.go expected.go
 if [[ $? -eq 0 ]]
 then
-	echo "PASS"
+	echo "---PASS---"
 	exit 0
 else
-	echo "FAIL"
+	echo "---FAIL---"
 	diff output.go expected.go
 	exit 1
 fi
