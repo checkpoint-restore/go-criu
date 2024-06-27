@@ -30,8 +30,6 @@ func LoadMagic() MagicMap {
 	magicMap.ByValue[1631600659] = "CPUINFO"
 	magicMap.ByName["CREDS"] = 1409430855
 	magicMap.ByValue[1409430855] = "CREDS"
-	magicMap.ByName["CRTOOLS_IMAGES_V1_1"] = 2
-	magicMap.ByValue[2] = "CRTOOLS_IMAGES_V1_1"
 	magicMap.ByName["EVENTFD_FILE"] = 1146238754
 	magicMap.ByValue[1146238754] = "EVENTFD_FILE"
 	magicMap.ByName["EVENTPOLL_FILE"] = 1157773400
