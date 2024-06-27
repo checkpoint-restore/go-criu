@@ -1,11 +1,13 @@
 package criu
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/checkpoint-restore/go-criu/v7/rpc"
@@ -17,6 +19,7 @@ type Criu struct {
 	swrkCmd  *exec.Cmd
 	swrkSk   *os.File
 	swrkPath string
+	output   *bytes.Buffer
 }
 
 // MakeCriu returns the Criu object required for most operations
@@ -44,9 +47,12 @@ func (c *Criu) Prepare() error {
 	srv := os.NewFile(uintptr(fds[1]), "criu-xprt-srv")
 	defer srv.Close()
 
+	out := new(bytes.Buffer)
 	args := []string{"swrk", strconv.Itoa(fds[1])}
 	// #nosec G204
 	cmd := exec.Command(c.swrkPath, args...)
+	cmd.Stdout = out
+	cmd.Stderr = out
 
 	err = cmd.Start()
 	if err != nil {
@@ -61,13 +67,20 @@ func (c *Criu) Prepare() error {
 }
 
 // Cleanup cleans up
-func (c *Criu) Cleanup() {
+func (c *Criu) Cleanup() error {
+	var errs []error
 	if c.swrkCmd != nil {
-		c.swrkSk.Close()
+		if err := c.swrkSk.Close(); err != nil {
+			errs = append(errs, err)
+		}
 		c.swrkSk = nil
-		_ = c.swrkCmd.Wait()
+		if err := c.swrkCmd.Wait(); err != nil {
+			errs = append(errs, fmt.Errorf("criu swrk failed: %w (%s)", err, strings.TrimSpace(c.output.String())))
+		}
 		c.swrkCmd = nil
+		c.output = nil
 	}
+	return errors.Join(errs...)
 }
 
 func (c *Criu) sendAndRecv(reqB []byte) ([]byte, int, error) {
@@ -99,7 +112,7 @@ func (c *Criu) doSwrk(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify) e
 	return nil
 }
 
-func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify, features *rpc.CriuFeatures) (*rpc.CriuResp, error) {
+func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy Notify, features *rpc.CriuFeatures) (_ *rpc.CriuResp, retErr error) {
 	var resp *rpc.CriuResp
 
 	req := rpc.CriuReq{
@@ -121,7 +134,13 @@ func (c *Criu) doSwrkWithResp(reqType rpc.CriuReqType, opts *rpc.CriuOpts, nfy N
 			return nil, err
 		}
 
-		defer c.Cleanup()
+		defer func() {
+			// append any cleanup errors to the returned error
+			err := c.Cleanup()
+			if err != nil {
+				retErr = errors.Join(retErr, err)
+			}
+		}()
 	}
 
 	for {
