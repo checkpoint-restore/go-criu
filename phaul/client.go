@@ -1,6 +1,7 @@
 package phaul
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/checkpoint-restore/go-criu/v7"
@@ -55,7 +56,7 @@ func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStat
 }
 
 // Migrate function
-func (pc *Client) Migrate() error {
+func (pc *Client) Migrate() (retErr error) {
 	criu := criu.MakeCriu()
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
@@ -72,7 +73,13 @@ func (pc *Client) Migrate() error {
 		return err
 	}
 
-	defer criu.Cleanup()
+	defer func() {
+		// append any cleanup errors to the returned error
+		err := criu.Cleanup()
+		if err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 
 	imgs, err := preparePhaulImages(pc.cfg.Wdir)
 	if err != nil {
