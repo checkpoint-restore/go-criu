@@ -12,12 +12,6 @@ TEST_PAYLOAD := piggie/piggie
 TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul
 COVERAGE_BINARIES := test.coverage phaul/phaul.coverage crit/crit-test.coverage
 
-GO_MAJOR_VER = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
-GO_MINOR_VER = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
-MIN_GO_MAJOR_VER = 1
-MIN_GO_MINOR_VER = 20
-GO_VALIDATION_ERR = Go version is not supported. Please update to at least $(MIN_GO_MAJOR_VER).$(MIN_GO_MINOR_VER)
-
 all: $(TEST_BINARIES) phaul-test
 	mkdir -p image
 	PID=$$(piggie/piggie) && \
@@ -25,17 +19,6 @@ all: $(TEST_BINARIES) phaul-test
 	./test dump $$PID image && \
 	./test restore image
 	rm -rf image
-
-check-go-version:
-	@if [ $(GO_MAJOR_VER) -gt $(MIN_GO_MAJOR_VER) ]; then \
-		exit 0 ;\
-	elif [ $(GO_MAJOR_VER) -lt $(MIN_GO_MAJOR_VER) ]; then \
-		echo '$(GO_VALIDATION_ERR)';\
-		exit 1; \
-	elif [ $(GO_MINOR_VER) -lt $(MIN_GO_MINOR_VER) ] ; then \
-		echo '$(GO_VALIDATION_ERR)';\
-		exit 1; \
-	fi
 
 piggie/piggie: piggie/piggie.c
 	$(CC) $^ -o $@
@@ -55,17 +38,17 @@ phaul-test: $(TEST_BINARIES)
 crit-test:
 	$(MAKE) -C crit
 
-test.coverage: check-go-version *.go
+test.coverage: *.go
 	$(GO) build \
 		-cover \
 		-o $@ main.go
 
-phaul/phaul.coverage: check-go-version phaul/*.go
+phaul/phaul.coverage: phaul/*.go
 	$(GO) build \
 		-cover \
 		-o $@ phaul/main.go
 
-crit/crit-test.coverage: check-go-version crit/*.go
+crit/crit-test.coverage: crit/*.go
 	# Re-build the crit binary, so that test coverage
 	# works even if we run `make test` before that.
 	$(MAKE) -C ../crit clean
@@ -75,7 +58,7 @@ crit/crit-test.coverage: check-go-version crit/*.go
 		-cover \
 		-o $@ crit/main.go
 
-coverage: check-go-version $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
+coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
 	PID=$$(piggie/piggie) && \
@@ -115,4 +98,4 @@ clean:
 	@make -C loop/ clean
 	@make -C mmapper/ clean
 
-.PHONY: all clean coverage codecov crit-test phaul-test check-go-version
+.PHONY: all clean coverage codecov crit-test phaul-test
