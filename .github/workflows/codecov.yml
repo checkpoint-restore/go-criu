@@ -4,7 +4,6 @@ on: [push, pull_request]
 
 jobs:
   build:
-    if: ${{ github.repository == 'checkpoint-restore/go-criu' }}
     runs-on: ubuntu-latest
     name: Code coverage
     steps:
@@ -48,7 +47,7 @@ jobs:
         sudo -E make coverage
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         fail_ci_if_error: true
         file: test/.coverage/coverage.out
