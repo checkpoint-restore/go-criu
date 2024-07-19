@@ -202,7 +202,10 @@ func main() {
 			log.Fatalln("dump failed: ", err)
 		}
 
-		c.Cleanup()
+		err = c.Cleanup()
+		if err != nil {
+			log.Fatalln("cleanup failed: ", err)
+		}
 	case "restore":
 		log.Println("Restoring")
 		img, err := os.Open(os.Args[2])
