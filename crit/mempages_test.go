@@ -248,7 +248,7 @@ func TestGetPsArgsAndEnvVars(t *testing.T) {
 	}
 }
 
-func TestGetShmemSize(t *testing.T) {
+func TestSearchPattern(t *testing.T) {
 	pid, err := getTestImgPID()
 	if err != nil {
 		t.Fatal(err)
@@ -259,15 +259,92 @@ func TestGetShmemSize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	size, err := mr.GetShmemSize()
-	if err != nil {
-		t.Fatal(err)
+	testCases := []struct {
+		name                   string
+		pattern                string
+		context                int
+		escapeRegExpCharacters bool
+		shouldMatch            bool
+		expectedError          error
+	}{
+		{
+			name:        "PATH environment variable",
+			pattern:     "PATH=",
+			shouldMatch: true,
+		},
+		{
+			name:        "PATH environment variable regex",
+			pattern:     `\bPATH=([^\s]+)\b`,
+			shouldMatch: true,
+		},
+		{
+			name:        "PATH environment variable regex with 10 bytes context",
+			pattern:     `\bPATH=([^\s]+)\b`,
+			context:     10,
+			shouldMatch: true,
+		},
+		{
+			name:          "PATH environment variable regex with a negative context",
+			pattern:       `\bPATH=([^\s]+)\b`,
+			context:       -1,
+			expectedError: errors.New("context size cannot be negative"),
+		},
+		{
+			name:        "PATH environment variable regex with a large context",
+			pattern:     `\bPATH=([^\s]+)\b`,
+			context:     100000,
+			shouldMatch: true,
+		},
+		{
+			name:    "Non-existent pattern",
+			pattern: "NON_EXISTENT_PATTERN",
+		},
+		{
+			name:        "PASSWORD environment variable value as regex",
+			pattern:     "123 Hello.*?",
+			shouldMatch: true,
+		},
+		{
+			name:                   "PASSWORD environment variable value with regex metacharacters to escape",
+			pattern:                `123 Hello.*?[^]@WORLD(|x)`,
+			escapeRegExpCharacters: true,
+			shouldMatch:            true,
+		},
 	}
 
-	// Verify that the shared memory size is as expected (0)
-	expectedSize := int64(0)
-	if size != expectedSize {
-		t.Fatalf("Expected shared memory size: %d, but got: %d", expectedSize, size)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			matches, err := mr.SearchPattern(tc.pattern, tc.escapeRegExpCharacters, tc.context, 0)
+			if err != nil && tc.expectedError == nil {
+				t.Errorf("Unexpected error for pattern %s: %v", tc.pattern, err)
+			} else if err == nil && tc.expectedError != nil {
+				t.Errorf("Expected error for pattern %s: %v", tc.pattern, tc.expectedError)
+			}
+
+			if tc.shouldMatch && len(matches) == 0 {
+				t.Errorf("Expected to find a match for pattern \"%s\"", tc.pattern)
+			} else if !tc.shouldMatch && len(matches) > 0 {
+				t.Errorf("Expected not to find any match for pattern \"%s\"", tc.pattern)
+			}
+
+			for _, match := range matches {
+				content, err := mr.GetMemPages(match.Vaddr, match.Vaddr+uint64(match.Length))
+				if err != nil {
+					t.Fatalf("Failed to get memory pages: %v", err)
+				}
+
+				buff := content.Bytes()
+				for i := range buff {
+					if buff[i] < 32 || buff[i] >= 127 {
+						buff[i] = 0x3F
+					}
+				}
+
+				if !strings.Contains(match.Match, content.String()) {
+					t.Errorf("Expected to find %s in matched pattern %s", content.String(), match.Match)
+				}
+			}
+		})
 	}
 }
 
