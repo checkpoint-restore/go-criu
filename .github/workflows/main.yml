@@ -13,18 +13,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.20.x, 1.21.x, 1.22.x]
-        criu_branch: [master, criu-dev]
+        go-version: [1.21.x, 1.22.x, 1.23.x]
+        criu-branch: [master, criu-dev]
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build CRIU ${{ matrix.criu_branch }}
+    - name: Build CRIU ${{ matrix.criu-branch }}
       run: |
         sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev curl unzip
-        git clone --depth=1 --single-branch -b ${{ matrix.criu_branch }} https://github.com/checkpoint-restore/criu.git
+        git clone --depth=1 --single-branch -b ${{ matrix.criu-branch }} https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
@@ -45,13 +45,13 @@ jobs:
 
     - name: Test CRIT
       run: |
-        if [ "${{ matrix.criu_branch }}" = "criu-dev" ]; then
+        if [ "${{ matrix.criu-branch }}" = "criu-dev" ]; then
           # First update protobuf. It is too old in the Ubuntu image.
           curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip
           sudo unzip -o protoc.zip -d /usr
           # We need to use the protobuf definitions from the criu-dev
           # branch as it might have changed.
-          sudo -E make -C scripts/proto-gen proto-update GIT_BRANCH=${{ matrix.criu_branch }}
+          sudo -E make -C scripts/proto-gen proto-update GIT_BRANCH=${{ matrix.criu-branch }}
           # Generate the bindings
           sudo -E make -C scripts/proto-gen
           # Build the CRIT binary
