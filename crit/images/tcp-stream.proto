@@ -4,6 +4,14 @@ syntax = "proto2";
 
 import "opts.proto";
 
+message tcp_opts_entry {
+	optional bool		cork		= 1;
+	optional bool		nodelay		= 2;
+	optional uint32		keepcnt		= 3;
+	optional uint32		keepidle	= 4;
+	optional uint32		keepintvl	= 5;
+}
+
 message tcp_stream_entry {
 	required uint32		inq_len		= 1;
 	required uint32		inq_seq		= 2;
@@ -16,6 +24,7 @@ message tcp_stream_entry {
 	optional uint32		rcv_wscale	= 8;
 	optional uint32		timestamp	= 9;
 
+	/* These two are deprecated, use tcp_opts_entry instead */
 	optional bool		cork		= 10;
 	optional bool		nodelay		= 11;
 
