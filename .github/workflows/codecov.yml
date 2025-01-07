@@ -16,15 +16,15 @@ jobs:
 
     - name: Build CRIU criu-dev
       run: |
-        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev curl unzip
+        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev uuid-dev curl unzip
         git clone --depth=1 --single-branch -b criu-dev https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
-    - name: Install Go 1.22.x
+    - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.22.x
+        check-latest: true
 
     - name: Install protoc-gen-go
       run: sudo env "GOBIN=/usr/bin" go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
