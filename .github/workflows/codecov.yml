@@ -21,10 +21,10 @@ jobs:
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
-    - name: Install Go 1.22.x
+    - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.22.x
+        check-latest: true
 
     - name: Install protoc-gen-go
       run: sudo env "GOBIN=/usr/bin" go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
