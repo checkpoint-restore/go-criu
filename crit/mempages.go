@@ -11,7 +11,6 @@ import (
 
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/mm"
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
-	"golang.org/x/sys/unix"
 )
 
 var sysPageSize = os.Getpagesize()
@@ -188,7 +187,7 @@ func (mr *MemoryReader) GetShmemSize() (int64, error) {
 	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
 	for _, vma := range mm.GetVmas() {
 		// Check if VMA has the MAP_SHARED flag set in its flags
-		if vma.GetFlags()&unix.MAP_SHARED != 0 {
+		if vma.GetFlags()&mapShared != 0 {
 			size += int64(vma.GetEnd() - vma.GetStart())
 		}
 	}

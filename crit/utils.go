@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"syscall"
 
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/fdinfo"
 	"github.com/checkpoint-restore/go-criu/v7/crit/images/pipe"
@@ -323,64 +322,15 @@ func getSkState(state tcpState) string {
 
 // Helper to identify address family
 func getAddressFamily(family uint32) string {
-	switch family {
-	case syscall.AF_UNIX:
-		return "UNIX"
-	case syscall.AF_NETLINK:
-		return "NETLINK"
-	case syscall.AF_BRIDGE:
-		return "BRIDGE"
-	case syscall.AF_KEY:
-		return "KEY"
-	case syscall.AF_PACKET:
-		return "PACKET"
-	case syscall.AF_INET:
-		return "IPV4"
-	case syscall.AF_INET6:
-		return "IPV6"
-	default:
-		return ""
-	}
+	return addressFamilyMap[family]
 }
 
 // Helper to identify socket type
 func getSkType(skType uint32) string {
-	switch skType {
-	case syscall.SOCK_STREAM:
-		return "STREAM"
-	case syscall.SOCK_DGRAM:
-		return "DGRAM"
-	case syscall.SOCK_SEQPACKET:
-		return "SEQPACKET"
-	case syscall.SOCK_RAW:
-		return "RAW"
-	case syscall.SOCK_RDM:
-		return "RDM"
-	case syscall.SOCK_PACKET:
-		return "PACKET"
-	default:
-		return ""
-	}
+	return socketTypeMap[skType]
 }
 
 // Helper to identify socket protocol
 func getSkProtocol(protocol uint32) string {
-	switch protocol {
-	case syscall.IPPROTO_ICMP:
-		return "ICMP"
-	case syscall.IPPROTO_ICMPV6:
-		return "ICMPV6"
-	case syscall.IPPROTO_IGMP:
-		return "IGMP"
-	case syscall.IPPROTO_RAW:
-		return "RAW"
-	case syscall.IPPROTO_TCP:
-		return "TCP"
-	case syscall.IPPROTO_UDP:
-		return "UDP"
-	case syscall.IPPROTO_UDPLITE:
-		return "UDPLITE"
-	default:
-		return ""
-	}
+	return socketProtocolMap[protocol]
 }
