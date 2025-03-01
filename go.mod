@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/sys v0.25.0
+	golang.org/x/sys v0.30.0
 	google.golang.org/protobuf v1.34.2
 )
 
