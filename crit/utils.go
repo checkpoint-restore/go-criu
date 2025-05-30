@@ -111,6 +111,13 @@ var (
 	filesImg, regImg, pipeImg, unixSkImg *CriuImage
 )
 
+func invalidateCache() {
+	filesImg = nil
+	regImg = nil
+	pipeImg = nil
+	unixSkImg = nil
+}
+
 // Helper to fetch a file if it exists in files.img
 func getFile(dir string, fID uint32) (*fdinfo.FileEntry, error) {
 	var err error
