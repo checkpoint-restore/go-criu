@@ -26,6 +26,8 @@ type PsTree struct {
 
 // ExplorePs constructs the process tree and returns the root process
 func (c *crit) ExplorePs() (*PsTree, error) {
+	invalidateCache()
+
 	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
@@ -84,6 +86,8 @@ type File struct {
 // ExploreFds searches the process tree for open files
 // and returns a list of PIDs with the corresponding files
 func (c *crit) ExploreFds() ([]*Fd, error) {
+	invalidateCache()
+
 	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
@@ -174,6 +178,8 @@ type Mem struct {
 // ExploreMems traverses the process tree and returns a
 // list of processes with the corresponding memory mapping
 func (c *crit) ExploreMems() ([]*MemMap, error) {
+	invalidateCache()
+
 	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
@@ -301,6 +307,8 @@ type Vma struct {
 // ExploreRss traverses the process tree and returns
 // a list of processes with their RSS mappings
 func (c *crit) ExploreRss() ([]*RssMap, error) {
+	invalidateCache()
+
 	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
@@ -399,6 +407,8 @@ type Socket struct {
 // ExploreSk searches the process tree for sockets
 // and returns a list of PIDs with the associated sockets
 func (c *crit) ExploreSk() ([]*Sk, error) {
+	invalidateCache()
+
 	psTreeImg, err := getImg(filepath.Join(c.inputDirPath, "pstree.img"), &pstree.PstreeEntry{})
 	if err != nil {
 		return nil, err
