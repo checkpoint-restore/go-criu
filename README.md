@@ -1,8 +1,8 @@
 <!-- markdownlint-configure-file { "no-hard-tabs": { "code_blocks": false } } -->
 # go-criu -- Go bindings for CRIU
 
-[![test](https://github.com/checkpoint-restore/go-criu/workflows/ci/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Aci)
-[![verify](https://github.com/checkpoint-restore/go-criu/workflows/verify/badge.svg?branch=master)](https://github.com/checkpoint-restore/go-criu/actions?query=workflow%3Averify)
+[![ci](https://github.com/checkpoint-restore/go-criu/actions/workflows/main.yml/badge.svg)](https://github.com/checkpoint-restore/go-criu/actions/workflows/main.yml)
+[![verify](https://github.com/checkpoint-restore/go-criu/actions/workflows/verify.yml/badge.svg)](https://github.com/checkpoint-restore/go-criu/actions/workflows/verify.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/checkpoint-restore/go-criu.svg)](https://pkg.go.dev/github.com/checkpoint-restore/go-criu)
 
 This repository provides Go bindings for [CRIU](https://criu.org/).
