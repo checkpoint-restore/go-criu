@@ -24,7 +24,7 @@ for file in os.listdir(args.src):
         name = os.path.splitext(file)[0]
         names.append(name)
         # Add the import path for the protoc file
-        pkg_opts += ',M{0}.proto=github.com/checkpoint-restore/go-criu/v7/crit/images/{0}'.format(
+        pkg_opts += ',M{0}.proto=github.com/checkpoint-restore/go-criu/v8/crit/images/{0}'.format(
             name)
 
 # Create the dest dir

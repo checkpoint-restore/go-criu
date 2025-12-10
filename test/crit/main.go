@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/checkpoint-restore/go-criu/v7/crit"
-	"github.com/checkpoint-restore/go-criu/v7/crit/cli"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/pstree"
+	"github.com/checkpoint-restore/go-criu/v8/crit"
+	"github.com/checkpoint-restore/go-criu/v8/crit/cli"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pstree"
 )
 
 const loopTestImgDir = "test-imgs/loop"

@@ -9,7 +9,7 @@
 package inventory
 
 import (
-	criu_core "github.com/checkpoint-restore/go-criu/v7/crit/images/criu-core"
+	criu_core "github.com/checkpoint-restore/go-criu/v8/crit/images/criu-core"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

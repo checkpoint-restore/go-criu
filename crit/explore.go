@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"strconv"
 
-	criu_core "github.com/checkpoint-restore/go-criu/v7/crit/images/criu-core"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/fdinfo"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/fs"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/mm"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/pstree"
+	criu_core "github.com/checkpoint-restore/go-criu/v8/crit/images/criu-core"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/fdinfo"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/fs"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/mm"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pagemap"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pstree"
 )
 
 // PsTree represents the process tree
