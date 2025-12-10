@@ -3,8 +3,8 @@ package utils
 import (
 	"fmt"
 
-	"github.com/checkpoint-restore/go-criu/v7"
-	"github.com/checkpoint-restore/go-criu/v7/rpc"
+	"github.com/checkpoint-restore/go-criu/v8"
+	"github.com/checkpoint-restore/go-criu/v8/rpc"
 	"google.golang.org/protobuf/proto"
 )
 

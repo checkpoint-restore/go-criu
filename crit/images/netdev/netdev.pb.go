@@ -9,11 +9,11 @@
 package netdev
 
 import (
-	macvlan "github.com/checkpoint-restore/go-criu/v7/crit/images/macvlan"
-	_ "github.com/checkpoint-restore/go-criu/v7/crit/images/opts"
-	sit "github.com/checkpoint-restore/go-criu/v7/crit/images/sit"
-	sysctl "github.com/checkpoint-restore/go-criu/v7/crit/images/sysctl"
-	tun "github.com/checkpoint-restore/go-criu/v7/crit/images/tun"
+	macvlan "github.com/checkpoint-restore/go-criu/v8/crit/images/macvlan"
+	_ "github.com/checkpoint-restore/go-criu/v8/crit/images/opts"
+	sit "github.com/checkpoint-restore/go-criu/v8/crit/images/sit"
+	sysctl "github.com/checkpoint-restore/go-criu/v8/crit/images/sysctl"
+	tun "github.com/checkpoint-restore/go-criu/v8/crit/images/tun"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

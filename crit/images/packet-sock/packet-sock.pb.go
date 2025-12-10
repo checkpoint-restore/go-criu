@@ -9,9 +9,9 @@
 package packet_sock
 
 import (
-	fown "github.com/checkpoint-restore/go-criu/v7/crit/images/fown"
-	_ "github.com/checkpoint-restore/go-criu/v7/crit/images/opts"
-	sk_opts "github.com/checkpoint-restore/go-criu/v7/crit/images/sk-opts"
+	fown "github.com/checkpoint-restore/go-criu/v8/crit/images/fown"
+	_ "github.com/checkpoint-restore/go-criu/v8/crit/images/opts"
+	sk_opts "github.com/checkpoint-restore/go-criu/v8/crit/images/sk-opts"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

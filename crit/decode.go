@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	ghost_file "github.com/checkpoint-restore/go-criu/v7/crit/images/ghost-file"
-	"github.com/checkpoint-restore/go-criu/v7/crit/images/pagemap"
+	ghost_file "github.com/checkpoint-restore/go-criu/v8/crit/images/ghost-file"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pagemap"
 	"google.golang.org/protobuf/proto"
 )
 

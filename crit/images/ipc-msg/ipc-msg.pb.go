@@ -9,7 +9,7 @@
 package ipc_msg
 
 import (
-	ipc_desc "github.com/checkpoint-restore/go-criu/v7/crit/images/ipc-desc"
+	ipc_desc "github.com/checkpoint-restore/go-criu/v8/crit/images/ipc-desc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
