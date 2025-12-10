@@ -128,7 +128,7 @@ func TestGetMemPages(t *testing.T) {
 				pagemapEntries: mr.GetPagemapEntries(),
 			},
 			start:         mr.pagemapEntries[0].GetVaddr(),
-			end:           mr.pagemapEntries[0].GetVaddr() + uint64(uint32(sysPageSize)*mr.pagemapEntries[0].GetNrPages()),
+			end:           mr.pagemapEntries[0].GetVaddr() + uint64(sysPageSize)*mr.pagemapEntries[0].GetNrPages(),
 			expectedError: nil,
 		},
 		{
@@ -141,7 +141,7 @@ func TestGetMemPages(t *testing.T) {
 				pagemapEntries: mr.GetPagemapEntries(),
 			},
 			start:         mr.pagemapEntries[1].GetVaddr(),
-			end:           mr.pagemapEntries[1].GetVaddr() + uint64(uint32(sysPageSize)*mr.pagemapEntries[1].GetNrPages()),
+			end:           mr.pagemapEntries[1].GetVaddr() + uint64(sysPageSize)*mr.pagemapEntries[1].GetNrPages(),
 			expectedError: nil,
 		},
 		{
@@ -154,7 +154,7 @@ func TestGetMemPages(t *testing.T) {
 				pagemapEntries: mr.GetPagemapEntries(),
 			},
 			start:         mr.pagemapEntries[0].GetVaddr(),
-			end:           mr.pagemapEntries[0].GetVaddr() + uint64(uint32(sysPageSize)*mr.pagemapEntries[0].GetNrPages()),
+			end:           mr.pagemapEntries[0].GetVaddr() + uint64(sysPageSize)*mr.pagemapEntries[0].GetNrPages(),
 			expectedError: errors.New("no such file or directory"),
 		},
 		{
@@ -167,7 +167,7 @@ func TestGetMemPages(t *testing.T) {
 				pagemapEntries: mr.GetPagemapEntries(),
 			},
 			start:         mr.pagemapEntries[1].GetVaddr(),
-			end:           mr.pagemapEntries[1].GetVaddr() + uint64(uint32(sysPageSize)*mr.pagemapEntries[1].GetNrPages()),
+			end:           mr.pagemapEntries[1].GetVaddr() + uint64(sysPageSize)*mr.pagemapEntries[1].GetNrPages(),
 			expectedError: errors.New("EOF"),
 		},
 	}
