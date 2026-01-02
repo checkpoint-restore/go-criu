@@ -29,6 +29,7 @@ jobs:
     - name: Build CRIU ${{ matrix.criu-branch }}
       if: runner.os == 'Linux'
       run: |
+        sudo apt-get update
         sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev uuid-dev curl unzip
         git clone --depth=1 --single-branch -b ${{ matrix.criu-branch }} https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu

@@ -16,6 +16,7 @@ jobs:
 
     - name: Build CRIU criu-dev
       run: |
+        sudo apt-get update
         sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev uuid-dev curl unzip
         git clone --depth=1 --single-branch -b criu-dev https://github.com/checkpoint-restore/criu.git
         make -j"$(nproc)" -C criu
