@@ -54,6 +54,10 @@ int main(void)
 		write(start_pipe[1], &res, sizeof(res));
 		close(start_pipe[1]);
 
+		/* Create a process with task_state="dead" */
+		if (fork() == 0)
+			_exit(0);
+
 		while (1) {
 			sleep(1);
 		}
