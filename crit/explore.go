@@ -13,6 +13,25 @@ import (
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/pstree"
 )
 
+// CRIU uses 4 task states to represent the state of a process. A process can be
+// Alive, Dead, Stopped or Zombie. Only Alive and Stopped processes have
+// associated state (memory pages, file descriptors, sockets, etc). The function
+// checks whether a process with the given pID has associated state.
+func (c *crit) taskHasState(pID uint32) (bool, error) {
+	coreImg, err := getImg(
+		filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)),
+		&criu_core.CoreEntry{},
+	)
+	if err != nil {
+		return false, err
+	}
+
+	coreData := coreImg.Entries[0].Message.(*criu_core.CoreEntry)
+	state := TaskState(coreData.GetTc().GetTaskState())
+
+	return state.IsAliveOrStopped(), nil
+}
+
 // PsTree represents the process tree
 type PsTree struct {
 	PID      uint32               `json:"pid"`
@@ -97,6 +116,15 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
+
+		ok, err := c.taskHasState(pID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+
 		// Get file with object IDs
 		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
 		if err != nil {
@@ -199,6 +227,15 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
+
+		ok, err := c.taskHasState(pID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+
 		// Get memory mappings
 		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
@@ -318,6 +355,15 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
+
+		ok, err := c.taskHasState(pID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+
 		// Get virtual memory addresses
 		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
@@ -418,6 +464,15 @@ func (c *crit) ExploreSk() ([]*Sk, error) {
 	for _, entry := range psTreeImg.Entries {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
+
+		ok, err := c.taskHasState(pID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+
 		// Get file with object IDs
 		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
 		if err != nil {
