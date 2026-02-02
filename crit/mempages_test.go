@@ -93,7 +93,7 @@ func TestGetMemPages(t *testing.T) {
 	}
 
 	defer func() {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		if err := os.Remove(tmpFile.Name()); err != nil {
 			t.Fatal(err)
 		}

@@ -50,13 +50,13 @@ func recodeImgs(imgs []string) error {
 		if err != nil {
 			return err
 		}
-		defer imgFile.Close()
+		defer func() { _ = imgFile.Close() }()
 		testImg := img + ".test.img"
 		testImgFile, err := os.Create(testImg)
 		if err != nil {
 			return err
 		}
-		defer testImgFile.Close()
+		defer func() { _ = testImgFile.Close() }()
 
 		c := crit.New(imgFile, testImgFile, "", false, false)
 		entryType, err := cli.GetEntryTypeFromImg(imgFile)
@@ -283,7 +283,7 @@ func getTestImgPID(dir string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer psTreeFile.Close()
+	defer func() { _ = psTreeFile.Close() }()
 
 	c := crit.New(psTreeFile, nil, loopTestImgDir, false, true)
 

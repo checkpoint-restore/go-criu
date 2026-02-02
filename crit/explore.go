@@ -390,7 +390,7 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 				vmaIndex++
 			}
 			// Compute last virtual address
-			pagemapEnd := pagemapData.GetVaddr() + (uint64(pagemapData.GetNrPages()) << 12)
+			pagemapEnd := pagemapData.GetVaddr() + (pagemapData.GetNrPages() << 12)
 
 			for vmas[vmaIndex].GetStart() < pagemapEnd {
 				if vmaIndex == vmaIndexPrev {

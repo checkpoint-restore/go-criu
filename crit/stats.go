@@ -19,7 +19,7 @@ func getStats(path string) (*stats.StatsEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer statsFile.Close()
+	defer func() { _ = statsFile.Close() }()
 
 	c := New(statsFile, nil, "", false, false)
 	statsImg, err := c.Decode(&stats.StatsEntry{})

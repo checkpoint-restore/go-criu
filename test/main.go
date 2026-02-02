@@ -34,7 +34,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	if err != nil {
 		return fmt.Errorf("can't open image dir: %w", err)
 	}
-	defer img.Close()
+	defer func() { _ = img.Close() }()
 
 	opts := &rpc.CriuOpts{
 		Pid:         proto.Int32(int32(pid)),
@@ -212,7 +212,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("can't open image dir:", err)
 		}
-		defer img.Close()
+		defer func() { _ = img.Close() }()
 
 		opts := &rpc.CriuOpts{
 			ImagesDirFd: proto.Int32(int32(img.Fd())),
