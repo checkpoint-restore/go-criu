@@ -1,3 +1,5 @@
+version: "2"
+
 linters:
   presets:
     - bugs
@@ -10,8 +12,7 @@ linters:
     - whitespace
     - misspell
     - dupl
-    - gosimple
-    - stylecheck
+    - staticcheck
 
 linters-settings:
   exhaustive:
