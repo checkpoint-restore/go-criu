@@ -235,14 +235,14 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 
 	for _, entry := range mr.pagemapEntries {
 		startAddr := entry.GetVaddr()
-		endAddr := startAddr + uint64(entry.GetNrPages())*uint64(mr.pageSize)
+		endAddr := startAddr + entry.GetNrPages()*uint64(mr.pageSize)
 
 		initialOffset := uint64(0)
 		for _, e := range mr.pagemapEntries {
 			if e == entry {
 				break
 			}
-			initialOffset += uint64(e.GetNrPages()) * uint64(mr.pageSize)
+			initialOffset += e.GetNrPages() * uint64(mr.pageSize)
 		}
 
 		for offset := uint64(0); offset < endAddr-startAddr; offset += uint64(chunkSize) {

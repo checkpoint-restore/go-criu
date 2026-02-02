@@ -129,7 +129,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 	}
 
 	opts := &rpc.CriuOpts{
-		Pid:         proto.Int32(int32(cfg.Pid)),
+		Pid:         proto.Int32(cfg.Pid),
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("dump.log"),
 		ImagesDirFd: proto.Int32(int32(imgDir.Fd())),

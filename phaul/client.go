@@ -62,7 +62,7 @@ func (pc *Client) Migrate() (retErr error) {
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
 	}
 	opts := &rpc.CriuOpts{
-		Pid:      proto.Int32(int32(pc.cfg.Pid)),
+		Pid:      proto.Int32(pc.cfg.Pid),
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("pre-dump.log"),
 		Ps:       &psi,
