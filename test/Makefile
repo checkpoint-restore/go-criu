@@ -9,8 +9,8 @@ CRIU_FEATURE_PIDFD_STORE = $(shell if criu check --feature pidfd_store > /dev/nu
 export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE
 
 TEST_PAYLOAD := piggie/piggie
-TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul
-COVERAGE_BINARIES := test.coverage phaul/phaul.coverage crit/crit-test.coverage
+TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul inheritfd/inheritfd
+COVERAGE_BINARIES := test.coverage phaul/phaul.coverage crit/crit-test.coverage inheritfd/inheritfd.coverage
 
 all: $(TEST_BINARIES) phaul-test
 	mkdir -p image
@@ -27,6 +27,9 @@ test: main.go
 	$(GO) build -v -o $@ $^
 
 phaul/phaul: phaul/main.go
+	$(GO) build -v -o $@ $^
+
+inheritfd/inheritfd: inheritfd/main.go
 	$(GO) build -v -o $@ $^
 
 phaul-test: $(TEST_BINARIES)
@@ -58,6 +61,11 @@ crit/crit-test.coverage: crit/*.go
 		-cover \
 		-o $@ crit/main.go
 
+inheritfd/inheritfd.coverage: inheritfd/*.go
+	$(GO) build \
+		-cover \
+		-o $@ inheritfd/main.go
+
 coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	mkdir -p $(COVERAGE_PATH)
 	mkdir -p image
@@ -70,6 +78,7 @@ coverage: $(COVERAGE_BINARIES) $(TEST_PAYLOAD)
 	trap 'pkill -9 piggie' INT EXIT TERM && \
 	GOCOVERDIR=${COVERAGE_PATH} phaul/phaul.coverage $$PID
 	cd crit/ && GOCOVERDIR=${COVERAGE_PATH} ./crit-test.coverage
+	cd inheritfd/ && GOCOVERDIR=${COVERAGE_PATH} ./inheritfd.coverage
 	$(MAKE) -C ../crit/ unit-test GOFLAGS="-coverprofile=${COVERAGE_PATH}/coverprofile-crit-unit-test"
 	$(MAKE) -C crit/ e2e-test GOCOVERDIR=${COVERAGE_PATH}
 	$(MAKE) -C crit/ clean
