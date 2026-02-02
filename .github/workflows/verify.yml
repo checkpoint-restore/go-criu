@@ -5,17 +5,18 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: golangci/golangci-lint-action@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-go@v6
+      with:
+        go-version: stable
+    - uses: golangci/golangci-lint-action@v9
       with:
         version: latest
-        # Only show new issues for a pull request.
-        only-new-issues: true
 
   gomod:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
     - name: verify go.mod/go.sum
       run: |
         go mod tidy
@@ -26,7 +27,7 @@ jobs:
     permissions:
       pull-requests: read
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dorny/paths-filter@v3
       id: changes
       with:
