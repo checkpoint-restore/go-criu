@@ -36,7 +36,7 @@ jobs:
             - 'README.md'
     - name: Lint markdown
       if: steps.changes.outputs.md == 'true'
-      uses: DavidAnson/markdownlint-cli2-action@v9
+      uses: DavidAnson/markdownlint-cli2-action@v22
       with:
         globs: |
           README.md
