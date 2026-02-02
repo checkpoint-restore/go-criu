@@ -101,7 +101,7 @@ func getImg(path string, entryType proto.Message) (*CriuImage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error opening binary file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	return decodeImg(file, entryType, false)
 }

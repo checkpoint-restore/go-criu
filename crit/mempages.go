@@ -91,17 +91,18 @@ func (mr *MemoryReader) GetMemPages(start, end uint64) (*bytes.Buffer, error) {
 
 		var nSkip, nRead uint64
 
-		if pageNumber == startPage {
+		switch pageNumber {
+		case startPage:
 			nSkip = start - pageNumber*uint64(mr.pageSize)
 			if startPage == endPage {
 				nRead = size
 			} else {
 				nRead = uint64(mr.pageSize) - nSkip
 			}
-		} else if pageNumber == endPage {
+		case endPage:
 			nSkip = 0
 			nRead = end - pageNumber*uint64(mr.pageSize)
-		} else {
+		default:
 			nSkip = 0
 			nRead = uint64(mr.pageSize)
 		}
@@ -137,7 +138,7 @@ func (mr *MemoryReader) getPage(pageNo uint64) ([]byte, error) {
 			return nil, err
 		}
 
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		buff := make([]byte, mr.pageSize)
 
@@ -230,7 +231,7 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	for _, entry := range mr.pagemapEntries {
 		startAddr := entry.GetVaddr()

@@ -51,7 +51,11 @@ If no output file is provided, the JSON is printed to stdout.`,
 			if err != nil {
 				log.Fatal(fmt.Errorf("error opening input file: %w", err))
 			}
-			defer inputFile.Close()
+			defer func() {
+				if err := inputFile.Close(); err != nil {
+					log.Fatal(fmt.Errorf("error closing input file: %w", err))
+				}
+			}()
 		}
 
 		c = crit.New(inputFile, nil,
@@ -84,7 +88,11 @@ If no output file is provided, the JSON is printed to stdout.`,
 		if err != nil {
 			log.Fatal(fmt.Errorf("error opening destination file: %w", err))
 		}
-		defer jsonFile.Close()
+		defer func() {
+			if err := jsonFile.Close(); err != nil {
+				log.Fatal(fmt.Errorf("error closing destination file: %w", err))
+			}
+		}()
 
 		_, err = jsonFile.Write(jsonData)
 		if err != nil {
@@ -110,7 +118,11 @@ var encodeCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(fmt.Errorf("error opening input file: %w", err))
 			}
-			defer inputFile.Close()
+			defer func() {
+				if err := inputFile.Close(); err != nil {
+					log.Fatal(fmt.Errorf("error closing input file: %w", err))
+				}
+			}()
 		}
 		if outputFilePath == "" {
 			outputFile = os.Stdout
@@ -119,7 +131,11 @@ var encodeCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(fmt.Errorf("error opening output file: %w", err))
 			}
-			defer outputFile.Close()
+			defer func() {
+				if err := outputFile.Close(); err != nil {
+					log.Fatal(fmt.Errorf("error closing output file: %w", err))
+				}
+			}()
 		}
 
 		c = crit.New(inputFile, outputFile,
@@ -160,7 +176,11 @@ var showCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(fmt.Errorf("error opening input file: %w", err))
 			}
-			defer inputFile.Close()
+			defer func() {
+				if err := inputFile.Close(); err != nil {
+					log.Fatal(fmt.Errorf("error closing input file: %w", err))
+				}
+			}()
 		}
 
 		c = crit.New(inputFile, nil,
@@ -200,7 +220,11 @@ var infoCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(fmt.Errorf("error opening input file: %w", err))
 			}
-			defer inputFile.Close()
+			defer func() {
+				if err := inputFile.Close(); err != nil {
+					log.Fatal(fmt.Errorf("error closing input file: %w", err))
+				}
+			}()
 		}
 
 		c = crit.New(inputFile, nil,

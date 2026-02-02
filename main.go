@@ -42,7 +42,7 @@ func (c *Criu) Prepare() error {
 	cln := os.NewFile(uintptr(fds[0]), "criu-xprt-cln")
 	syscall.CloseOnExec(fds[0])
 	srv := os.NewFile(uintptr(fds[1]), "criu-xprt-srv")
-	defer srv.Close()
+	defer func() { _ = srv.Close() }()
 
 	args := []string{"swrk", strconv.Itoa(fds[1])}
 	// #nosec G204
@@ -50,7 +50,7 @@ func (c *Criu) Prepare() error {
 
 	err = cmd.Start()
 	if err != nil {
-		cln.Close()
+		_ = cln.Close()
 		return err
 	}
 

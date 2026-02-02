@@ -58,7 +58,7 @@ func mergeImages(dumpDir, lastPreDumpDir string) error {
 		return err
 	}
 
-	defer idir.Close()
+	defer func() { _ = idir.Close() }()
 
 	imgs, err := idir.Readdirnames(0)
 	if err != nil {
@@ -98,7 +98,7 @@ func (r *testRemote) doRestore() error {
 	if err != nil {
 		return err
 	}
-	defer imgDir.Close()
+	defer func() { _ = imgDir.Close() }()
 
 	opts := &rpc.CriuOpts{
 		LogLevel:    proto.Int32(4),
@@ -122,7 +122,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 	if err != nil {
 		return err
 	}
-	defer imgDir.Close()
+	defer func() { _ = imgDir.Close() }()
 
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(cfg.Memfd)),

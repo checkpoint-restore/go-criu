@@ -51,7 +51,7 @@ func (s *Server) StartIter() error {
 	if err != nil {
 		return err
 	}
-	defer imgDir.Close()
+	defer func() { _ = imgDir.Close() }()
 
 	opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
 	if prevP != "" {

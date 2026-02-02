@@ -106,7 +106,7 @@ func (pc *Client) Migrate() (retErr error) {
 		}
 
 		err = criu.PreDump(opts, nil)
-		imgDir.Close()
+		_ = imgDir.Close()
 		if err != nil {
 			return err
 		}
