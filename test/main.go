@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v8"
@@ -30,7 +31,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	if err != nil {
 		return fmt.Errorf("can't parse pid: %w", err)
 	}
-	img, err := os.Open(imgDir)
+	img, err := os.Open(filepath.Clean(imgDir))
 	if err != nil {
 		return fmt.Errorf("can't open image dir: %w", err)
 	}
@@ -208,7 +209,7 @@ func main() {
 		}
 	case "restore":
 		log.Println("Restoring")
-		img, err := os.Open(os.Args[2])
+		img, err := os.Open(filepath.Clean(os.Args[2]))
 		if err != nil {
 			log.Fatalln("can't open image dir:", err)
 		}
