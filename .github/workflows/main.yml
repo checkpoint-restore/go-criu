@@ -43,15 +43,15 @@ jobs:
     - name: Install protoc-gen-go
       if: runner.os == 'Linux'
       run: |
-        sudo env "GOBIN=/usr/bin" go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        sudo env "GOBIN=/usr/bin" "$(command -v go)" install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 
     - name: Test go-criu
       if: runner.os == 'Linux'
-      run: sudo -E make test
+      run: sudo -E make GO="$(command -v go)" test
 
     - name: Test magicgen script
       if: runner.os == 'Linux'
-      run: sudo -E make -C scripts/magic-gen test
+      run: sudo -E make GO="$(command -v go)" -C scripts/magic-gen test
 
     - name: Test CRIT
       shell: bash # To support windows
@@ -60,17 +60,18 @@ jobs:
           make -C crit clean bin/crit
           exit 0
         fi
+        GO_BIN="$(command -v go)"
         if [ "${{ matrix.criu-branch }}" = "criu-dev" ]; then
           # First update protobuf. It is too old in the Ubuntu image.
           curl -Lo protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip
           sudo unzip -o protoc.zip -d /usr
           # We need to use the protobuf definitions from the criu-dev
           # branch as it might have changed.
-          sudo -E make -C scripts/proto-gen proto-update GIT_BRANCH=${{ matrix.criu-branch }}
+          sudo -E make GO="$GO_BIN" -C scripts/proto-gen proto-update GIT_BRANCH=${{ matrix.criu-branch }}
           # Generate the bindings
-          sudo -E make -C scripts/proto-gen
+          sudo -E make GO="$GO_BIN" -C scripts/proto-gen
           # Build the CRIT binary
-          sudo -E make -C crit clean bin/crit
+          sudo -E make GO="$GO_BIN" -C crit clean bin/crit
         fi
-        sudo -E make -C crit unit-test
-        sudo -E make -C test crit-test
+        sudo -E make GO="$GO_BIN" GOFLAGS="" -C crit unit-test
+        sudo -E make GO="$GO_BIN" -C test crit-test
