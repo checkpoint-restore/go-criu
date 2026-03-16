@@ -25,7 +25,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v6
       with:
-        check-latest: true
+        go-version: 'stable'
 
     - name: Install protoc-gen-go
       run: sudo env "GOBIN=/usr/bin" "$(command -v go)" install google.golang.org/protobuf/cmd/protoc-gen-go@latest

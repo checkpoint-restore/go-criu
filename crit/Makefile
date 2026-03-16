@@ -18,7 +18,7 @@ test-imgs: ../test/loop/loop
 
 unit-test: test-imgs
 	$(eval GOFLAGS ?= -cover)
-	$(GO) test ${GOFLAGS} -v ./...
+	$(GO) test ${GOFLAGS} -v .
 
 clean:
 	@rm -f bin/crit
