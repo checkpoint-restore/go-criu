@@ -49,7 +49,7 @@ jobs:
         sudo -E make GO="$GO_BIN" coverage
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         fail_ci_if_error: true
         file: test/.coverage/coverage.out
