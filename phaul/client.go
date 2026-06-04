@@ -7,8 +7,8 @@ import (
 	"github.com/checkpoint-restore/go-criu/v8"
 	"github.com/checkpoint-restore/go-criu/v8/crit"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/stats"
+	proto "github.com/checkpoint-restore/go-criu/v8/internal/proto"
 	"github.com/checkpoint-restore/go-criu/v8/rpc"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -59,12 +59,12 @@ func isLastIter(iter int, stats *stats.DumpStatsEntry, prevStats *stats.DumpStat
 func (pc *Client) Migrate() (retErr error) {
 	criu := criu.MakeCriu()
 	psi := rpc.CriuPageServerInfo{
-		Fd: proto.Int32(int32(pc.cfg.Memfd)),
+		Fd: proto.Ptr(int32(pc.cfg.Memfd)),
 	}
 	opts := &rpc.CriuOpts{
-		Pid:      proto.Int32(pc.cfg.Pid),
-		LogLevel: proto.Int32(4),
-		LogFile:  proto.String("pre-dump.log"),
+		Pid:      proto.Ptr(pc.cfg.Pid),
+		LogLevel: proto.Ptr[int32](4),
+		LogFile:  proto.Ptr("pre-dump.log"),
 		Ps:       &psi,
 	}
 
@@ -100,9 +100,9 @@ func (pc *Client) Migrate() (retErr error) {
 			return err
 		}
 
-		opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
+		opts.ImagesDirFd = proto.Ptr(int32(imgDir.Fd()))
 		if prevP != "" {
-			opts.ParentImg = proto.String(prevP)
+			opts.ParentImg = proto.Ptr(prevP)
 		}
 
 		err = criu.PreDump(opts, nil)

@@ -9,9 +9,9 @@ import (
 	"strconv"
 
 	"github.com/checkpoint-restore/go-criu/v8"
+	proto "github.com/checkpoint-restore/go-criu/v8/internal/proto"
 	"github.com/checkpoint-restore/go-criu/v8/rpc"
 	"github.com/checkpoint-restore/go-criu/v8/utils"
-	"google.golang.org/protobuf/proto"
 )
 
 // TestNfy struct
@@ -38,15 +38,15 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	defer func() { _ = img.Close() }()
 
 	opts := &rpc.CriuOpts{
-		Pid:         proto.Int32(int32(pid)),
-		ImagesDirFd: proto.Int32(int32(img.Fd())),
-		LogLevel:    proto.Int32(4),
-		LogFile:     proto.String("dump.log"),
+		Pid:         proto.Ptr(int32(pid)),
+		ImagesDirFd: proto.Ptr(int32(img.Fd())),
+		LogLevel:    proto.Ptr[int32](4),
+		LogFile:     proto.Ptr("dump.log"),
 	}
 
 	if prevImg != "" {
-		opts.ParentImg = proto.String(prevImg)
-		opts.TrackMem = proto.Bool(true)
+		opts.ParentImg = proto.Ptr(prevImg)
+		opts.TrackMem = proto.Ptr(true)
 	}
 
 	if pre {
@@ -63,14 +63,14 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 
 func featureCheck(c *criu.Criu) error {
 	features := &rpc.CriuFeatures{
-		MemTrack:   proto.Bool(false),
-		LazyPages:  proto.Bool(false),
-		PidfdStore: proto.Bool(false),
+		MemTrack:   proto.Ptr(false),
+		LazyPages:  proto.Ptr(false),
+		PidfdStore: proto.Ptr(false),
 	}
 	featuresToCompare := &rpc.CriuFeatures{
-		MemTrack:   proto.Bool(false),
-		LazyPages:  proto.Bool(false),
-		PidfdStore: proto.Bool(false),
+		MemTrack:   proto.Ptr(false),
+		LazyPages:  proto.Ptr(false),
+		PidfdStore: proto.Ptr(false),
 	}
 	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
 	if env != "" {
@@ -78,8 +78,8 @@ func featureCheck(c *criu.Criu) error {
 		if err != nil {
 			return err
 		}
-		features.MemTrack = proto.Bool(val != 0)
-		featuresToCompare.MemTrack = proto.Bool(val != 0)
+		features.MemTrack = proto.Ptr(val != 0)
+		featuresToCompare.MemTrack = proto.Ptr(val != 0)
 	}
 	env = os.Getenv("CRIU_FEATURE_LAZY_PAGES")
 	if env != "" {
@@ -87,8 +87,8 @@ func featureCheck(c *criu.Criu) error {
 		if err != nil {
 			return err
 		}
-		features.LazyPages = proto.Bool(val != 0)
-		featuresToCompare.LazyPages = proto.Bool(val != 0)
+		features.LazyPages = proto.Ptr(val != 0)
+		featuresToCompare.LazyPages = proto.Ptr(val != 0)
 	}
 	env = os.Getenv("CRIU_FEATURE_PIDFD_STORE")
 	if env != "" {
@@ -96,8 +96,8 @@ func featureCheck(c *criu.Criu) error {
 		if err != nil {
 			return err
 		}
-		features.PidfdStore = proto.Bool(val != 0)
-		featuresToCompare.PidfdStore = proto.Bool(val != 0)
+		features.PidfdStore = proto.Ptr(val != 0)
+		featuresToCompare.PidfdStore = proto.Ptr(val != 0)
 	}
 
 	features, err := c.FeatureCheck(features)
@@ -216,9 +216,9 @@ func main() {
 		defer func() { _ = img.Close() }()
 
 		opts := &rpc.CriuOpts{
-			ImagesDirFd: proto.Int32(int32(img.Fd())),
-			LogLevel:    proto.Int32(4),
-			LogFile:     proto.String("restore.log"),
+			ImagesDirFd: proto.Ptr(int32(img.Fd())),
+			LogLevel:    proto.Ptr[int32](4),
+			LogFile:     proto.Ptr("restore.log"),
 		}
 
 		err = c.Restore(opts, nil)

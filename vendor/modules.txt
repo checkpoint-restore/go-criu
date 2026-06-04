@@ -1,3 +1,6 @@
+# github.com/aperturerobotics/protobuf-go-lite v0.14.0
+## explicit; go 1.23
+github.com/aperturerobotics/protobuf-go-lite
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap

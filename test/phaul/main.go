@@ -8,9 +8,9 @@ import (
 	"syscall"
 
 	"github.com/checkpoint-restore/go-criu/v8"
+	proto "github.com/checkpoint-restore/go-criu/v8/internal/proto"
 	"github.com/checkpoint-restore/go-criu/v8/phaul"
 	"github.com/checkpoint-restore/go-criu/v8/rpc"
-	"google.golang.org/protobuf/proto"
 )
 
 type testLocal struct {
@@ -101,9 +101,9 @@ func (r *testRemote) doRestore() error {
 	defer func() { _ = imgDir.Close() }()
 
 	opts := &rpc.CriuOpts{
-		LogLevel:    proto.Int32(4),
-		LogFile:     proto.String("restore.log"),
-		ImagesDirFd: proto.Int32(int32(imgDir.Fd())),
+		LogLevel:    proto.Ptr[int32](4),
+		LogFile:     proto.Ptr("restore.log"),
+		ImagesDirFd: proto.Ptr(int32(imgDir.Fd())),
 	}
 
 	cr := r.srv.GetCriu()
@@ -125,16 +125,16 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.Config, lastClnImag
 	defer func() { _ = imgDir.Close() }()
 
 	psi := rpc.CriuPageServerInfo{
-		Fd: proto.Int32(int32(cfg.Memfd)),
+		Fd: proto.Ptr(int32(cfg.Memfd)),
 	}
 
 	opts := &rpc.CriuOpts{
-		Pid:         proto.Int32(cfg.Pid),
-		LogLevel:    proto.Int32(4),
-		LogFile:     proto.String("dump.log"),
-		ImagesDirFd: proto.Int32(int32(imgDir.Fd())),
-		TrackMem:    proto.Bool(true),
-		ParentImg:   proto.String(lastClnImagesDir),
+		Pid:         proto.Ptr(cfg.Pid),
+		LogLevel:    proto.Ptr[int32](4),
+		LogFile:     proto.Ptr("dump.log"),
+		ImagesDirFd: proto.Ptr(int32(imgDir.Fd())),
+		TrackMem:    proto.Ptr(true),
+		ParentImg:   proto.Ptr(lastClnImagesDir),
 		Ps:          &psi,
 	}
 
