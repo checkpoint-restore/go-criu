@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/checkpoint-restore/go-criu/v8"
+	proto "github.com/checkpoint-restore/go-criu/v8/internal/proto"
 	"github.com/checkpoint-restore/go-criu/v8/rpc"
-	"google.golang.org/protobuf/proto"
 )
 
 func getSwrkPid() int {
@@ -115,7 +115,7 @@ func testAutoPopulateInheritFd(netnsFile *os.File) {
 	c.AddInheritFd("testKey", netnsFile)
 
 	opts := &rpc.CriuOpts{
-		ImagesDir: proto.String("/nonexistent"),
+		ImagesDir: proto.Ptr("/nonexistent"),
 	}
 
 	// Call will fail (no images), but ensureInheritFd() runs first

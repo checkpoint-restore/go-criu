@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/checkpoint-restore/go-criu/v8"
+	proto "github.com/checkpoint-restore/go-criu/v8/internal/proto"
 	"github.com/checkpoint-restore/go-criu/v8/rpc"
 	"golang.org/x/sys/unix"
-	"google.golang.org/protobuf/proto"
 )
 
 // Server struct
@@ -38,11 +38,11 @@ func MakePhaulServer(c Config) (*Server, error) {
 func (s *Server) StartIter() error {
 	fmt.Printf("S: start iter\n")
 	psi := rpc.CriuPageServerInfo{
-		Fd: proto.Int32(int32(s.cfg.Memfd)),
+		Fd: proto.Ptr(int32(s.cfg.Memfd)),
 	}
 	opts := &rpc.CriuOpts{
-		LogLevel: proto.Int32(4),
-		LogFile:  proto.String("ps.log"),
+		LogLevel: proto.Ptr[int32](4),
+		LogFile:  proto.Ptr("ps.log"),
 		Ps:       &psi,
 	}
 
@@ -53,7 +53,7 @@ func (s *Server) StartIter() error {
 	}
 	defer func() { _ = imgDir.Close() }()
 
-	opts.ImagesDirFd = proto.Int32(int32(imgDir.Fd()))
+	opts.ImagesDirFd = proto.Ptr(int32(imgDir.Fd()))
 	if prevP != "" {
 		p, err := filepath.Abs(imgDir.Name())
 		if err != nil {
@@ -63,7 +63,7 @@ func (s *Server) StartIter() error {
 		if err != nil {
 			return err
 		}
-		opts.ParentImg = proto.String(rel)
+		opts.ParentImg = proto.Ptr(rel)
 	}
 
 	pid, _, err := s.cr.StartPageServerChld(opts)
