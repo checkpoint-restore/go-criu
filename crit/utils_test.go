@@ -71,13 +71,38 @@ func TestProcessIP(t *testing.T) {
 		{[]uint32{0}, "0.0.0.0"},
 		{[]uint32{16777343}, "127.0.0.1"},
 		{[]uint32{0, 0, 0, 0}, "::"},
-		{[]uint32{0, 0, 4294901760, 16777343}, "7f00:1::"},
+		{[]uint32{0, 0, 4294901760, 16777343}, "::ffff:127.0.0.1"},
+		{[]uint32{33022, 0, 0, 16777216}, "fe80::1"},
 	}
 
 	for _, test := range tests {
 		got := processIP(test.input)
 		if got != test.want {
 			t.Errorf("want: %s, got: %s", test.want, got)
+		}
+	}
+}
+
+func TestSocketHumanNames(t *testing.T) {
+	tests := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"syn received", getSkState(tcpSynReceived), "SYN_RECV"},
+		{"fin wait 1", getSkState(tcpFinWait1), "FIN_WAIT1"},
+		{"fin wait 2", getSkState(tcpFinWait2), "FIN_WAIT2"},
+		{"ip protocol", getSkProtocol(0), "IP"},
+		{"unknown family", getAddressFamily(42), "42"},
+		{"unknown type", getSkType(42), "42"},
+		{"unknown protocol", getSkProtocol(42), "42"},
+		{"unknown state", getSkState(tcpState(42)), "42"},
+		{"zero state", getSkState(0), ""},
+	}
+
+	for _, test := range tests {
+		if test.got != test.want {
+			t.Errorf("%s: want %q, got %q", test.name, test.want, test.got)
 		}
 	}
 }

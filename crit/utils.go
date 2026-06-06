@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -275,11 +276,11 @@ func processIP(parts []uint32) string {
 	}
 	// IPv6
 	if len(parts) == 4 {
-		ip := make(net.IP, net.IPv6len)
-		for _, part := range parts {
-			binary.LittleEndian.PutUint32(ip, part)
+		var ip [net.IPv6len]byte
+		for i, part := range parts {
+			binary.LittleEndian.PutUint32(ip[i*4:], part)
 		}
-		return ip.String()
+		return netip.AddrFrom16(ip).String()
 	}
 	// Invalid
 	return ""
@@ -307,9 +308,9 @@ const (
 var states = map[tcpState]string{
 	tcpEstablished: "ESTABLISHED",
 	tcpSynSent:     "SYN_SENT",
-	tcpSynReceived: "SYN_RECEIVED",
-	tcpFinWait1:    "FIN_WAIT_1",
-	tcpFinWait2:    "FIN_WAIT_2",
+	tcpSynReceived: "SYN_RECV",
+	tcpFinWait1:    "FIN_WAIT1",
+	tcpFinWait2:    "FIN_WAIT2",
 	tcpTimeWait:    "TIME_WAIT",
 	tcpClose:       "CLOSE",
 	tcpCloseWait:   "CLOSE_WAIT",
@@ -324,20 +325,33 @@ func getSkState(state tcpState) string {
 	if stateName, ok := states[state]; ok {
 		return stateName
 	}
-	return ""
+	if state == 0 {
+		return ""
+	}
+	return strconv.FormatUint(uint64(state), 10)
+}
+
+func socketMapName(m map[uint32]string, value uint32) string {
+	if name, ok := m[value]; ok {
+		return name
+	}
+	if value == 0 {
+		return ""
+	}
+	return strconv.FormatUint(uint64(value), 10)
 }
 
 // Helper to identify address family
 func getAddressFamily(family uint32) string {
-	return addressFamilyMap[family]
+	return socketMapName(addressFamilyMap, family)
 }
 
 // Helper to identify socket type
 func getSkType(skType uint32) string {
-	return socketTypeMap[skType]
+	return socketMapName(socketTypeMap, skType)
 }
 
 // Helper to identify socket protocol
 func getSkProtocol(protocol uint32) string {
-	return socketProtocolMap[protocol]
+	return socketMapName(socketProtocolMap, protocol)
 }

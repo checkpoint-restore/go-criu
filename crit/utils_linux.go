@@ -25,6 +25,7 @@ var (
 		unix.SOCK_PACKET:    "PACKET",
 	}
 	socketProtocolMap = map[uint32]string{
+		unix.IPPROTO_IP:      "IP",
 		unix.IPPROTO_ICMP:    "ICMP",
 		unix.IPPROTO_ICMPV6:  "ICMPV6",
 		unix.IPPROTO_IGMP:    "IGMP",

@@ -1,5 +1,7 @@
 GO ?= go
+CC ?= gcc
 CRIU ?= criu
+BATS ?= bats
 
 all: integration-test e2e-test clean
 
@@ -7,9 +9,13 @@ integration-test: test-imgs crit-test
 	@echo "Running integration test"
 	@./crit-test
 
-e2e-test: ../../crit/bin/crit test-imgs crit-test.sh
+e2e-test: ../../crit/bin/crit test-imgs crit-test.sh bats-test
 	@echo "Running E2E test"
 	@./crit-test.sh
+
+bats-test: ../../crit/bin/crit test-imgs
+	@echo "Running bats tests"
+	@$(BATS) humanize.bats
 
 # gen_mmapper_imgs generates CRIU images for mmapper process.
 # Parameters:
@@ -25,13 +31,19 @@ define gen_mmapper_imgs
 	$(CRIU) dump -v4 -o dump.log -D $(MM_DIR) -t $(MM_PID)
 endef
 
-test-imgs: ../loop/loop ../mmapper/mmapper
+test-imgs: ../loop/loop ../mmapper/mmapper inetsk_sleeper/inetsk_sleeper
 	$(eval LOOP_PID := $(shell ../loop/loop))
 	$(eval LOOP_DIR := $@/loop)
 	mkdir -p ${LOOP_DIR}
 	cp /proc/${LOOP_PID}/environ ${LOOP_DIR}
 	cp /proc/${LOOP_PID}/cmdline ${LOOP_DIR}
 	$(CRIU) dump -v4 -o dump.log -D ${LOOP_DIR} -t $(LOOP_PID)
+
+	$(eval INETSK_PID := $(shell ./inetsk_sleeper/inetsk_sleeper))
+	$(eval INETSK_DIR := $@/inetsk)
+	mkdir -p ${INETSK_DIR}
+	$(CRIU) dump -v4 -o dump.log -D ${INETSK_DIR} -t $(INETSK_PID)
+	kill -9 $(INETSK_PID) 2>/dev/null || true
 
 	# Generate mmapper CRIU images for different memory mapping scenarios.
 	# gen_mmapper_imgs <memory size> <mmap flags> <images dir>
@@ -57,10 +69,14 @@ test-imgs: ../loop/loop ../mmapper/mmapper
 ../mmapper/mmapper:
 	$(MAKE) -C ../mmapper
 
+inetsk_sleeper/inetsk_sleeper:
+	$(MAKE) -C inetsk_sleeper
+
 crit-test: main.go
 	$(GO) build -v -o $@ $^
 
 clean:
 	@rm -rf test-imgs crit-test /tmp/mmapper-*.log
+	$(MAKE) -C inetsk_sleeper clean
 
-.PHONY: all test integration-test e2e-test clean
+.PHONY: all test integration-test e2e-test bats-test clean

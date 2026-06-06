@@ -21,6 +21,7 @@ var (
 		0xa: "PACKET",    // syscall.SOCK_PACKET
 	}
 	socketProtocolMap = map[uint32]string{
+		0x0:  "IP",      // syscall.IPPROTO_IP
 		0x1:  "ICMP",    // syscall.IPPROTO_ICMP
 		0x3a: "ICMPV6",  // syscall.IPPROTO_ICMPV6
 		0x2:  "IGMP",    // syscall.IPPROTO_IGMP

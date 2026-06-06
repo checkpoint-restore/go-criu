@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/fdinfo"
 	ghost_file "github.com/checkpoint-restore/go-criu/v8/crit/images/ghost-file"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/pagemap"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -21,7 +22,8 @@ type CriuImage struct {
 // CriuEntry represents a single entry in an image
 type CriuEntry struct {
 	proto.Message
-	Extra string
+	Extra    string
+	Humanize bool `json:"-"`
 }
 
 // MarshalJSON is the marshaler for CriuEntry.
@@ -34,16 +36,34 @@ func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 		return []byte(fmt.Sprint(`{"count":"`, c.Extra, `"}`)), nil
 	}
 
+	if c.Humanize {
+		if fe, ok := c.Message.(*fdinfo.FileEntry); ok {
+			data, err := marshalFileEntryHuman(fe)
+			if err != nil {
+				return nil, err
+			}
+			if c.Extra != "" {
+				return appendExtraJSON(data, c.Extra)
+			}
+			return data, nil
+		}
+	}
+
 	data, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(c.Message)
 	if err != nil {
 		return nil, err
 	}
 	// Append extra
 	if c.Extra != "" {
-		extraString := fmt.Sprint(`"extra":"`, c.Extra, `"}`)
-		data[len(data)-1] = byte(',')
-		data = append(data, []byte(extraString)...)
+		return appendExtraJSON(data, c.Extra)
 	}
+	return data, nil
+}
+
+func appendExtraJSON(data []byte, extra string) ([]byte, error) {
+	extraString := fmt.Sprint(`"extra":"`, extra, `"}`)
+	data[len(data)-1] = byte(',')
+	data = append(data, []byte(extraString)...)
 	return data, nil
 }
 
@@ -161,4 +181,14 @@ func unmarshalPagemap(imgData *jsonImage, img *CriuImage) error {
 	}
 
 	return nil
+}
+
+// Helper to enable humanized output for image entries
+func applyHumanize(img *CriuImage, humanize bool) {
+	if img == nil || !humanize {
+		return
+	}
+	for _, entry := range img.Entries {
+		entry.Humanize = true
+	}
 }

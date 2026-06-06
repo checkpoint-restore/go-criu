@@ -60,6 +60,7 @@ jobs:
           make -C crit clean bin/crit
           exit 0
         fi
+        sudo apt-get install -y bats
         GO_BIN="$(command -v go)"
         if [ "${{ matrix.criu-branch }}" = "criu-dev" ]; then
           # First update protobuf. It is too old in the Ubuntu image.
