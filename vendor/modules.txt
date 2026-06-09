@@ -1,6 +1,29 @@
 # github.com/aperturerobotics/protobuf-go-lite v0.14.0
 ## explicit; go 1.23
 github.com/aperturerobotics/protobuf-go-lite
+github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite
+github.com/aperturerobotics/protobuf-go-lite/compiler/protogen
+github.com/aperturerobotics/protobuf-go-lite/encoding/protowire
+github.com/aperturerobotics/protobuf-go-lite/features/clone
+github.com/aperturerobotics/protobuf-go-lite/features/equal
+github.com/aperturerobotics/protobuf-go-lite/features/json
+github.com/aperturerobotics/protobuf-go-lite/features/marshal
+github.com/aperturerobotics/protobuf-go-lite/features/size
+github.com/aperturerobotics/protobuf-go-lite/features/text
+github.com/aperturerobotics/protobuf-go-lite/features/unmarshal
+github.com/aperturerobotics/protobuf-go-lite/generator
+github.com/aperturerobotics/protobuf-go-lite/generator/base
+github.com/aperturerobotics/protobuf-go-lite/generator/fieldsem
+github.com/aperturerobotics/protobuf-go-lite/generator/pattern
+github.com/aperturerobotics/protobuf-go-lite/internal/detrand
+github.com/aperturerobotics/protobuf-go-lite/internal/editionssupport
+github.com/aperturerobotics/protobuf-go-lite/internal/encoding/defval
+github.com/aperturerobotics/protobuf-go-lite/internal/encoding/tag
+github.com/aperturerobotics/protobuf-go-lite/internal/encoding/text
+github.com/aperturerobotics/protobuf-go-lite/internal/errors
+github.com/aperturerobotics/protobuf-go-lite/internal/genid
+github.com/aperturerobotics/protobuf-go-lite/internal/strs
+github.com/aperturerobotics/protobuf-go-lite/internal/version
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
@@ -15,6 +38,9 @@ github.com/spf13/pflag
 golang.org/x/sys/unix
 # google.golang.org/protobuf v1.36.11
 ## explicit; go 1.23
+google.golang.org/protobuf/cmd/protoc-gen-go
+google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
+google.golang.org/protobuf/compiler/protogen
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -22,6 +48,7 @@ google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/editiondefaults
+google.golang.org/protobuf/internal/editionssupport
 google.golang.org/protobuf/internal/encoding/defval
 google.golang.org/protobuf/internal/encoding/json
 google.golang.org/protobuf/internal/encoding/messageset
@@ -33,6 +60,7 @@ google.golang.org/protobuf/internal/filetype
 google.golang.org/protobuf/internal/flags
 google.golang.org/protobuf/internal/genid
 google.golang.org/protobuf/internal/impl
+google.golang.org/protobuf/internal/msgfmt
 google.golang.org/protobuf/internal/order
 google.golang.org/protobuf/internal/pragma
 google.golang.org/protobuf/internal/protolazy
@@ -40,8 +68,14 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
+google.golang.org/protobuf/reflect/protopath
+google.golang.org/protobuf/reflect/protorange
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
+google.golang.org/protobuf/types/dynamicpb
+google.golang.org/protobuf/types/gofeaturespb
+google.golang.org/protobuf/types/pluginpb

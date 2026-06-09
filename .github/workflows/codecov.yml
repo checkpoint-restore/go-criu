@@ -29,8 +29,7 @@ jobs:
 
     - name: Install protoc-gen-go
       run: |
-        sudo env "GOBIN=/usr/bin" "$(command -v go)" install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        sudo env "GOBIN=/usr/bin" "$(command -v go)" install github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite@latest
+        sudo env "GOBIN=/usr/bin" "$(command -v go)" install tool
 
     - name: Run tests and collect coverage
       run: |
