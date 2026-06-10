@@ -61,7 +61,12 @@ func New(
 // Decode loads a binary image file into a CriuImage object
 func (c *crit) Decode(entryType proto.Message) (*CriuImage, error) {
 	// Convert binary image to Go struct
-	return decodeImg(c.inputFile, entryType, c.noPayload)
+	img, err := decodeImg(c.inputFile, entryType, c.noPayload)
+	if err != nil {
+		return nil, err
+	}
+	applyHumanize(img, c.pretty)
+	return img, nil
 }
 
 // Info loads a binary image file into a CriuImage object
