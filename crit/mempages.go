@@ -270,15 +270,9 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 
 			indexes := regexPattern.FindAllIndex(buff, -1)
 			for _, index := range indexes {
-				startContext := index[0] - context
-				if startContext < 0 {
-					startContext = 0
-				}
+				startContext := max(index[0]-context, 0)
 
-				endContext := index[1] + context
-				if endContext > len(buff) {
-					endContext = len(buff)
-				}
+				endContext := min(index[1]+context, len(buff))
 
 				results = append(results, PatternMatch{
 					Vaddr:   startAddr + offset + uint64(index[0]),
