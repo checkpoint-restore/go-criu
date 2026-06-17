@@ -26,7 +26,7 @@ func getSwrkPid() int {
 }
 
 func waitForSwrkPid() int {
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		swrkPid := getSwrkPid()
 		if swrkPid != 0 {
 			return swrkPid
