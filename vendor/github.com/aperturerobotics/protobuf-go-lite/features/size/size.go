@@ -49,7 +49,196 @@ func (p *size) messageSize(varName, sizeName string, message *protogen.Message) 
 	}
 }
 
+func (p *size) helperExpr(name string, args ...any) []any {
+	expr := []any{p.Helper(name), `(`}
+	for i, arg := range args {
+		if i != 0 {
+			expr = append(expr, `, `)
+		}
+		expr = append(expr, arg)
+	}
+	expr = append(expr, `)`)
+	return expr
+}
+
+func (p *size) helperMapPart(keySize int, field *protogen.Field, varName, sizeName string) []any {
+	switch field.Desc.Kind() {
+	case protoreflect.DoubleKind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		return p.helperExpr("SizeFixed64Value", strconv.Itoa(keySize))
+	case protoreflect.FloatKind, protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
+		return p.helperExpr("SizeFixed32Value", strconv.Itoa(keySize))
+	case protoreflect.Int64Kind, protoreflect.Uint64Kind, protoreflect.Uint32Kind, protoreflect.EnumKind, protoreflect.Int32Kind:
+		return p.helperExpr("SizeVarintValue", strconv.Itoa(keySize), varName)
+	case protoreflect.BoolKind:
+		return p.helperExpr("SizeBoolValue", strconv.Itoa(keySize))
+	case protoreflect.StringKind:
+		return p.helperExpr("SizeStringValue", strconv.Itoa(keySize), varName)
+	case protoreflect.BytesKind:
+		return p.helperExpr("SizeBytesValue", strconv.Itoa(keySize), `len(`+varName+`)`)
+	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+		return p.helperExpr("SizeZigzagValue", strconv.Itoa(keySize), varName)
+	case protoreflect.MessageKind:
+		p.P(`l = 0`)
+		p.P(`if `, varName, ` != nil {`)
+		p.messageSize(varName, sizeName, field.Message)
+		p.P(`}`)
+		return p.helperExpr("SizeMessage", strconv.Itoa(keySize), `l`)
+	default:
+		panic("not implemented")
+	}
+}
+
+func (p *size) helperField(oneof bool, field *protogen.Field, sizeName string) {
+	fieldname := field.GoName
+	nullable := field.Message != nil || (!oneof && field.Desc.HasPresence())
+	repeated := field.Desc.Cardinality() == protoreflect.Repeated
+	packed := field.Desc.IsPacked()
+	wireType := generator.ProtoWireType(field.Desc.Kind())
+	fieldNumber := field.Desc.Number()
+	if packed {
+		wireType = protowire.BytesType
+	}
+	key := generator.KeySize(fieldNumber, wireType)
+	keyArg := strconv.Itoa(key)
+	accessor := `m.` + fieldname
+
+	switch field.Desc.Kind() {
+	case protoreflect.DoubleKind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		switch {
+		case packed:
+			p.P(`n += `, p.Helper("SizeFixed64Packed"), `(`, keyArg, `, `, accessor, `)`)
+		case repeated:
+			p.P(`n += `, p.Helper("SizeFixed64Slice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeFixed64Ptr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeFixed64Value"), `(`, keyArg, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeFixed64NonZero"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.FloatKind, protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
+		switch {
+		case packed:
+			p.P(`n += `, p.Helper("SizeFixed32Packed"), `(`, keyArg, `, `, accessor, `)`)
+		case repeated:
+			p.P(`n += `, p.Helper("SizeFixed32Slice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeFixed32Ptr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeFixed32Value"), `(`, keyArg, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeFixed32NonZero"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.Int64Kind, protoreflect.Uint64Kind, protoreflect.Uint32Kind, protoreflect.EnumKind, protoreflect.Int32Kind:
+		switch {
+		case packed:
+			p.P(`n += `, p.Helper("SizeVarintPacked"), `(`, keyArg, `, `, accessor, `)`)
+		case repeated:
+			p.P(`n += `, p.Helper("SizeVarintSlice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeVarintPtr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeVarintValue"), `(`, keyArg, `, `, accessor, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeVarintNonZero"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.BoolKind:
+		switch {
+		case packed:
+			p.P(`n += `, p.Helper("SizeBoolPacked"), `(`, keyArg, `, `, accessor, `)`)
+		case repeated:
+			p.P(`n += `, p.Helper("SizeBoolSlice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeBoolPtr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeBoolValue"), `(`, keyArg, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeBoolNonZero"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.StringKind:
+		switch {
+		case repeated:
+			p.P(`n += `, p.Helper("SizeStringSlice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeStringPtr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeStringValue"), `(`, keyArg, `, `, accessor, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeStringNonEmpty"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.BytesKind:
+		switch {
+		case repeated:
+			p.P(`n += `, p.Helper("SizeBytesSlice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeBytesPresent"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeBytesValue"), `(`, keyArg, `, len(`, accessor, `))`)
+		default:
+			p.P(`n += `, p.Helper("SizeBytesNonEmpty"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+		switch {
+		case packed:
+			p.P(`n += `, p.Helper("SizeZigzagPacked"), `(`, keyArg, `, `, accessor, `)`)
+		case repeated:
+			p.P(`n += `, p.Helper("SizeZigzagSlice"), `(`, keyArg, `, `, accessor, `)`)
+		case nullable:
+			p.P(`n += `, p.Helper("SizeZigzagPtr"), `(`, keyArg, `, `, accessor, `)`)
+		case oneof:
+			p.P(`n += `, p.Helper("SizeZigzagValue"), `(`, keyArg, `, `, accessor, `)`)
+		default:
+			p.P(`n += `, p.Helper("SizeZigzagNonZero"), `(`, keyArg, `, `, accessor, `)`)
+		}
+	case protoreflect.GroupKind:
+		if nullable {
+			p.P(`if `, accessor, ` != nil {`)
+			p.messageSize(accessor, sizeName, field.Message)
+			p.P(`n += `, p.Helper("SizeGroup"), `(`, keyArg, `, l)`)
+			p.P(`}`)
+		}
+	case protoreflect.MessageKind:
+		if field.Desc.IsMap() {
+			fieldKeySize := generator.KeySize(field.Desc.Number(), generator.ProtoWireType(field.Desc.Kind()))
+			keyKeySize := generator.KeySize(1, generator.ProtoWireType(field.Message.Fields[0].Desc.Kind()))
+			valueKeySize := generator.KeySize(2, generator.ProtoWireType(field.Message.Fields[1].Desc.Kind()))
+			p.P(`for k, v := range `, accessor, ` {`)
+			p.P(`_ = k`)
+			p.P(`_ = v`)
+			keyPart := p.helperMapPart(keyKeySize, field.Message.Fields[0], `k`, sizeName)
+			valuePart := p.helperMapPart(valueKeySize, field.Message.Fields[1], `v`, sizeName)
+			p.P(append(append([]any{`mapEntrySize := `}, keyPart...), append([]any{` + `}, valuePart...)...)...)
+			p.P(`n += `, p.Helper("SizeMessage"), `(`, strconv.Itoa(fieldKeySize), `, mapEntrySize)`)
+			p.P(`}`)
+		} else if field.Desc.IsList() {
+			p.P(`for _, e := range `, accessor, ` {`)
+			p.messageSize(`e`, sizeName, field.Message)
+			p.P(`n += `, p.Helper("SizeMessage"), `(`, keyArg, `, l)`)
+			p.P(`}`)
+		} else if oneof {
+			p.P(`if `, accessor, ` != nil {`)
+			p.messageSize(accessor, sizeName, field.Message)
+			p.P(`n += `, p.Helper("SizeMessage"), `(`, keyArg, `, l)`)
+			p.P(`} else {`)
+			p.P(`n += `, strconv.Itoa(key+1))
+			p.P(`}`)
+		} else {
+			p.P(`if `, accessor, ` != nil {`)
+			p.messageSize(accessor, sizeName, field.Message)
+			p.P(`n += `, p.Helper("SizeMessage"), `(`, keyArg, `, l)`)
+			p.P(`}`)
+		}
+	default:
+		panic("not implemented")
+	}
+}
+
 func (p *size) field(oneof bool, field *protogen.Field, sizeName string) {
+	if p.Config.HelperCodegen() {
+		p.helperField(oneof, field, sizeName)
+		return
+	}
+
 	fieldname := field.GoName
 	nullable := field.Message != nil || (!oneof && field.Desc.HasPresence())
 	repeated := field.Desc.Cardinality() == protoreflect.Repeated

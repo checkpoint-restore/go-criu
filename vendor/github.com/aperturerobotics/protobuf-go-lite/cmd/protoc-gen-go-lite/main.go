@@ -36,16 +36,21 @@ func main() {
 	}
 
 	var cfg generator.Config
+	var codegenMode string
 	var features string
 	var f flag.FlagSet
 
 	f.BoolVar(&cfg.AllowEmpty, "allow-empty", false, "allow generation of empty files")
+	f.StringVar(&codegenMode, "codegen", string(generator.CodegenModeHelper), "code generation mode: helper or unrolled")
 	f.StringVar(&features, "features", "all", "list of features to generate (separated by '+')")
 	f.StringVar(&cfg.BuildTag, "buildTag", "", "the go:build tag to set on generated files")
 
 	protogen.Options{
 		ParamFunc: f.Set,
 	}.Run(func(plugin *protogen.Plugin) error {
+		if err := cfg.SetCodegenMode(codegenMode); err != nil {
+			return err
+		}
 		gen, err := generator.NewGenerator(plugin, strings.Split(features, "+"), &cfg)
 		if err != nil {
 			return err

@@ -54,6 +54,60 @@ func (p *clone) cloneOneofField(lhsBase, rhsBase string, oneof *protogen.Oneof) 
 	p.P(`}`)
 }
 
+func (p *clone) cloneFieldHelper(lhsBase, rhsBase string, field *protogen.Field) bool {
+	if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
+		return false
+	}
+	if !p.FieldSemantics(field).Reference {
+		panic("method should not be invoked for non-reference fields")
+	}
+
+	lhs := lhsBase + "." + field.GoName
+	rhs := rhsBase + "." + field.GoName
+	fieldKind := field.Desc.Kind()
+
+	if field.Desc.IsList() {
+		switch {
+		case isScalar(fieldKind):
+			p.P(lhs, ` = `, p.Helper("CloneSlice"), `(`, rhs, `)`)
+		case fieldKind == protoreflect.BytesKind:
+			p.P(lhs, ` = `, p.Helper("CloneBytesSlice"), `(`, rhs, `)`)
+		case fieldKind == protoreflect.MessageKind || fieldKind == protoreflect.GroupKind:
+			p.P(lhs, ` = `, p.Helper("CloneVTSlice"), `(`, rhs, `)`)
+		default:
+			panic("unexpected")
+		}
+		return true
+	}
+
+	if field.Desc.IsMap() {
+		valueKind := field.Message.Fields[1].Desc.Kind()
+		switch {
+		case isScalar(valueKind):
+			p.P(lhs, ` = `, p.Helper("CloneMap"), `(`, rhs, `)`)
+		case valueKind == protoreflect.BytesKind:
+			p.P(lhs, ` = `, p.Helper("CloneBytesMap"), `(`, rhs, `)`)
+		case valueKind == protoreflect.MessageKind || valueKind == protoreflect.GroupKind:
+			p.P(lhs, ` = `, p.Helper("CloneVTMap"), `(`, rhs, `)`)
+		default:
+			panic("unexpected")
+		}
+		return true
+	}
+
+	switch {
+	case isScalar(fieldKind):
+		p.P(lhs, ` = `, p.Helper("ClonePtr"), `(`, rhs, `)`)
+	case fieldKind == protoreflect.BytesKind:
+		p.P(lhs, ` = `, p.Helper("CloneBytes"), `(`, rhs, `)`)
+	case fieldKind == protoreflect.MessageKind || fieldKind == protoreflect.GroupKind:
+		p.P(lhs, ` = `, p.Helper("CloneVTValue"), `(`, rhs, `)`)
+	default:
+		panic("unexpected")
+	}
+	return true
+}
+
 // cloneFieldSingular generates the code for cloning a singular, non-oneof field.
 func (p *clone) cloneFieldSingular(lhs, rhs string, kind protoreflect.Kind) {
 	switch {
@@ -76,6 +130,10 @@ func (p *clone) cloneFieldSingular(lhs, rhs string, kind protoreflect.Kind) {
 
 // cloneField generates the code for cloning a field in a protobuf.
 func (p *clone) cloneField(lhsBase, rhsBase string, field *protogen.Field) {
+	if p.Config.HelperCodegen() && p.cloneFieldHelper(lhsBase, rhsBase, field) {
+		return
+	}
+
 	// At this point, if we encounter a non-synthetic oneof, we assume it to be the representative
 	// field for that oneof.
 	if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
@@ -174,6 +232,10 @@ func (p *clone) body(ccTypeName string, message *protogen.Message, cloneUnknownF
 			p.P(`r.`, field.GoName, ` = m.`, field.GoName)
 			continue
 		}
+		if p.Config.HelperCodegen() {
+			refFields = append(refFields, field)
+			continue
+		}
 		// Shortcut: for types where we know that an optimized clone method exists, we can call it directly as it is
 		// nil-safe.
 		if field.Desc.Cardinality() != protoreflect.Repeated {
@@ -213,6 +275,11 @@ func (p *clone) bodyForOneOf(ccTypeName string, field *protogen.Field) {
 
 	if !oneofWrapperReference(field) {
 		p.P(`r.`, field.GoName, ` = m.`, field.GoName)
+		p.P(`return r`)
+		return
+	}
+	if p.Config.HelperCodegen() {
+		p.cloneField("r", "m", field)
 		p.P(`return r`)
 		return
 	}

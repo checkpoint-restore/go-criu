@@ -98,6 +98,49 @@ func (p *unmarshal) decodeFixed64(varName string, typeName string) {
 	p.P(varName, ` = `, typeName, `(_v64)`)
 }
 
+func (p *unmarshal) decodeBool(varName string) {
+	p.P(varName, `, iNdEx, err = `, p.Helper("DecodeVarintBool"), `(dAtA, iNdEx)`)
+	p.P(`if err != nil { return err }`)
+}
+
+func (p *unmarshal) decodeSint32(varName string, typeName string) {
+	p.P(`var _v32 int32`)
+	p.P(`_v32, iNdEx, err = `, p.Helper("DecodeSint32"), `(dAtA, iNdEx)`)
+	p.P(`if err != nil { return err }`)
+	p.P(varName, ` = `, typeName, `(_v32)`)
+}
+
+func (p *unmarshal) decodeSint64(varName string, typeName string) {
+	p.P(`var _v64 int64`)
+	p.P(`_v64, iNdEx, err = `, p.Helper("DecodeSint64"), `(dAtA, iNdEx)`)
+	p.P(`if err != nil { return err }`)
+	p.P(varName, ` = `, typeName, `(_v64)`)
+}
+
+func (p *unmarshal) decodeLengthDelimited(startName, endName string) {
+	p.P(startName, `, `, endName, `, err := `, p.Helper("DecodeLengthDelimited"), `(dAtA, iNdEx)`)
+	p.P(`if err != nil { return err }`)
+}
+
+func (p *unmarshal) decodeStringValue(varName string) {
+	if p.unsafe {
+		p.P(varName, `, iNdEx, err = `, p.Helper("DecodeStringUnsafe"), `(dAtA, iNdEx)`)
+	} else {
+		p.P(varName, `, iNdEx, err = `, p.Helper("DecodeString"), `(dAtA, iNdEx)`)
+	}
+	p.P(`if err != nil { return err }`)
+}
+
+func (p *unmarshal) decodeBytesValue(varName string, copyBytes bool) {
+	p.P(varName, `, iNdEx, err = `, p.Helper("DecodeBytes"), `(dAtA, iNdEx, `, strconv.FormatBool(copyBytes), `)`)
+	p.P(`if err != nil { return err }`)
+}
+
+func (p *unmarshal) decodeBytesAppend(dstName string) {
+	p.P(dstName, `, iNdEx, err = `, p.Helper("DecodeBytesAppend"), `(`, dstName, `, dAtA, iNdEx)`)
+	p.P(`if err != nil { return err }`)
+}
+
 func (p *unmarshal) validateUTF8(field *protogen.Field, value string) {
 	if field.Desc.Kind() != protoreflect.StringKind ||
 		field.Desc.Syntax() != protoreflect.Editions ||
@@ -130,10 +173,19 @@ func (p *unmarshal) mapField(varName string, field *protogen.Field) {
 	case protoreflect.Fixed32Kind:
 		p.decodeFixed32(varName, "uint32")
 	case protoreflect.BoolKind:
+		if p.Config.HelperCodegen() {
+			p.decodeBool(varName)
+			break
+		}
 		p.P(`var `, varName, `temp int`)
 		p.decodeVarint(varName+"temp", "int")
 		p.P(varName, ` = bool(`, varName, `temp != 0)`)
 	case protoreflect.StringKind:
+		if p.Config.HelperCodegen() {
+			p.decodeStringValue(varName)
+			p.validateUTF8(field, varName)
+			break
+		}
 		p.P(`var stringLen`, varName, ` uint64`)
 		p.decodeVarint("stringLen"+varName, "uint64")
 		p.P(`intStringLen`, varName, ` := int(stringLen`, varName, `)`)
@@ -159,6 +211,14 @@ func (p *unmarshal) mapField(varName string, field *protogen.Field) {
 		p.validateUTF8(field, varName)
 		p.P(`iNdEx = postStringIndex`, varName)
 	case protoreflect.MessageKind:
+		if p.Config.HelperCodegen() {
+			p.decodeLengthDelimited("msgStart"+varName, "postmsgIndex"+varName)
+			buf := `dAtA[msgStart` + varName + `:postmsgIndex` + varName + `]`
+			p.P(varName, ` = &`, p.noStarOrSliceType(field), `{}`)
+			p.decodeMessage(varName, buf, field.Message)
+			p.P(`iNdEx = postmsgIndex`, varName)
+			break
+		}
 		p.P(`var mapmsglen int`)
 		p.decodeVarint("mapmsglen", "int")
 		p.P(`if mapmsglen < 0 {`)
@@ -176,6 +236,10 @@ func (p *unmarshal) mapField(varName string, field *protogen.Field) {
 		p.decodeMessage(varName, buf, field.Message)
 		p.P(`iNdEx = postmsgIndex`)
 	case protoreflect.BytesKind:
+		if p.Config.HelperCodegen() {
+			p.decodeBytesValue(varName, !p.unsafe)
+			break
+		}
 		p.P(`var mapbyteLen uint64`)
 		p.decodeVarint("mapbyteLen", "uint64")
 		p.P(`intMapbyteLen := int(mapbyteLen)`)
@@ -206,11 +270,19 @@ func (p *unmarshal) mapField(varName string, field *protogen.Field) {
 	case protoreflect.Sfixed64Kind:
 		p.decodeFixed64(varName, "int64")
 	case protoreflect.Sint32Kind:
+		if p.Config.HelperCodegen() {
+			p.decodeSint32(varName, "int32")
+			break
+		}
 		p.P(`var `, varName, `temp int32`)
 		p.decodeVarint(varName+"temp", "int32")
 		p.P(varName, `temp = int32((uint32(`, varName, `temp) >> 1) ^ uint32(((`, varName, `temp&1)<<31)>>31))`)
 		p.P(varName, ` = int32(`, varName, `temp)`)
 	case protoreflect.Sint64Kind:
+		if p.Config.HelperCodegen() {
+			p.decodeSint64(varName, "int64")
+			break
+		}
 		p.P(`var `, varName, `temp uint64`)
 		p.decodeVarint(varName+"temp", "uint64")
 		p.P(varName, `temp = (`, varName, `temp >> 1) ^ uint64((int64(`, varName, `temp&1)<<63)>>63)`)
@@ -227,6 +299,53 @@ func (p *unmarshal) noStarOrSliceType(field *protogen.Field) string {
 		typ = typ[1:]
 	}
 	return typ
+}
+
+func (p *unmarshal) mapMessageField(fieldname string, field *protogen.Field, postIndex string) {
+	goTyp, _ := p.FieldGoType(field)
+	goTypK, _ := p.FieldGoType(field.Message.Fields[0])
+	goTypV, _ := p.FieldGoType(field.Message.Fields[1])
+
+	p.P(`if m.`, fieldname, ` == nil {`)
+	p.P(`m.`, fieldname, ` = make(`, goTyp, `)`)
+	p.P(`}`)
+
+	p.P("var mapkey ", goTypK)
+	p.P("var mapvalue ", goTypV)
+	p.P(`for iNdEx < `, postIndex, ` {`)
+
+	p.P(`entryPreIndex := iNdEx`)
+	p.P(`var wire uint64`)
+	p.decodeVarint("wire", "uint64")
+	p.P(`fieldNum := int32(wire >> 3)`)
+
+	p.P(`if fieldNum == 1 {`)
+	p.mapField("mapkey", field.Message.Fields[0])
+	p.P(`} else if fieldNum == 2 {`)
+	p.mapField("mapvalue", field.Message.Fields[1])
+	p.P(`} else {`)
+	p.P(`iNdEx = entryPreIndex`)
+	if p.Config.HelperCodegen() {
+		p.P(`iNdEx, err = `, p.Helper("SkipWithin"), `(dAtA, iNdEx, `, postIndex, `)`)
+		p.P(`if err != nil {`)
+		p.P(`return err`)
+		p.P(`}`)
+	} else {
+		p.P(`skippy, err := `, p.Helper("Skip"), `(dAtA[iNdEx:])`)
+		p.P(`if err != nil {`)
+		p.P(`return err`)
+		p.P(`}`)
+		p.P(`if (skippy < 0) || (iNdEx + skippy) < 0 {`)
+		p.P(`return `, p.Helper("ErrInvalidLength"))
+		p.P(`}`)
+		p.P(`if (iNdEx + skippy) > `, postIndex, ` {`)
+		p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
+		p.P(`}`)
+		p.P(`iNdEx += skippy`)
+	}
+	p.P(`}`)
+	p.P(`}`)
+	p.P(`m.`, fieldname, `[mapkey] = mapvalue`)
 }
 
 func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *protogen.Message) {
@@ -350,53 +469,84 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 			p.P(`m.`, fieldname, ` = &v`)
 		}
 	case protoreflect.BoolKind:
-		p.P(`var v int`)
-		p.decodeVarint("v", "int")
-		if oneof {
-			p.P(`b := `, typ, `(v != 0)`)
-			p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: b}`)
-		} else if repeated {
-			p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, typ, `(v != 0))`)
-		} else if !pointer {
-			p.P(`m.`, fieldname, ` = `, typ, `(v != 0)`)
+		if p.Config.HelperCodegen() {
+			p.P(`var v bool`)
+			p.decodeBool("v")
+			if oneof {
+				p.P(`b := `, typ, `(v)`)
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: b}`)
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, typ, `(v))`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = `, typ, `(v)`)
+			} else {
+				p.P(`b := `, typ, `(v)`)
+				p.P(`m.`, fieldname, ` = &b`)
+			}
 		} else {
-			p.P(`b := `, typ, `(v != 0)`)
-			p.P(`m.`, fieldname, ` = &b`)
+			p.P(`var v int`)
+			p.decodeVarint("v", "int")
+			if oneof {
+				p.P(`b := `, typ, `(v != 0)`)
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: b}`)
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, typ, `(v != 0))`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = `, typ, `(v != 0)`)
+			} else {
+				p.P(`b := `, typ, `(v != 0)`)
+				p.P(`m.`, fieldname, ` = &b`)
+			}
 		}
 	case protoreflect.StringKind:
-		p.P(`var stringLen uint64`)
-		p.decodeVarint("stringLen", "uint64")
-		p.P(`intStringLen := int(stringLen)`)
-		p.P(`if intStringLen < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`postIndex := iNdEx + intStringLen`)
-		p.P(`if postIndex < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`if postIndex > l {`)
-		p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
-		p.P(`}`)
-		str := "string(dAtA[iNdEx:postIndex])"
-		if p.unsafe {
-			str = "stringValue"
-			p.P(`var stringValue string`)
-			p.P(`if intStringLen > 0 {`)
-			p.P(`stringValue = `, p.Ident("unsafe", `String`), `(&dAtA[iNdEx], intStringLen)`)
-			p.P(`}`)
-		}
-		p.validateUTF8(field, str)
-		if oneof {
-			p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": ", str, `}`)
-		} else if repeated {
-			p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, str, `)`)
-		} else if !pointer {
-			p.P(`m.`, fieldname, ` = `, str)
+		if p.Config.HelperCodegen() {
+			p.P(`var v string`)
+			p.decodeStringValue("v")
+			p.validateUTF8(field, "v")
+			if oneof {
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": v}")
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, v)`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = v`)
+			} else {
+				p.P(`m.`, fieldname, ` = &v`)
+			}
 		} else {
-			p.P(`s := `, str)
-			p.P(`m.`, fieldname, ` = &s`)
+			p.P(`var stringLen uint64`)
+			p.decodeVarint("stringLen", "uint64")
+			p.P(`intStringLen := int(stringLen)`)
+			p.P(`if intStringLen < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`postIndex := iNdEx + intStringLen`)
+			p.P(`if postIndex < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`if postIndex > l {`)
+			p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
+			p.P(`}`)
+			str := "string(dAtA[iNdEx:postIndex])"
+			if p.unsafe {
+				str = "stringValue"
+				p.P(`var stringValue string`)
+				p.P(`if intStringLen > 0 {`)
+				p.P(`stringValue = `, p.Ident("unsafe", `String`), `(&dAtA[iNdEx], intStringLen)`)
+				p.P(`}`)
+			}
+			p.validateUTF8(field, str)
+			if oneof {
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": ", str, `}`)
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, str, `)`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = `, str)
+			} else {
+				p.P(`s := `, str)
+				p.P(`m.`, fieldname, ` = &s`)
+			}
+			p.P(`iNdEx = postIndex`)
 		}
-		p.P(`iNdEx = postIndex`)
 	case protoreflect.GroupKind:
 		p.P(`groupStart := iNdEx`)
 		p.P(`for {`)
@@ -433,6 +583,34 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 		p.P(`iNdEx += skippy`)
 		p.P(`}`)
 	case protoreflect.MessageKind:
+		if p.Config.HelperCodegen() {
+			p.decodeLengthDelimited("msgStart", "postIndex")
+			buf := `dAtA[msgStart:postIndex]`
+			if field.Desc.IsMap() {
+				p.P(`iNdEx = msgStart`)
+				p.mapMessageField(fieldname, field, "postIndex")
+			} else if oneof {
+				msgname := p.noStarOrSliceType(field)
+				p.P(`if oneof, ok := m.`, fieldname, `.(*`, field.GoIdent, `); ok {`)
+				p.decodeMessage("oneof."+field.GoName, buf, field.Message)
+				p.P(`} else {`)
+				p.P(`v := &`, msgname, `{}`)
+				p.decodeMessage("v", buf, field.Message)
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
+				p.P(`}`)
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, &`, field.Message.GoIdent, `{})`)
+				varname := fmt.Sprintf("m.%s[len(m.%s) - 1]", fieldname, fieldname)
+				p.decodeMessage(varname, buf, field.Message)
+			} else {
+				p.P(`if m.`, fieldname, ` == nil {`)
+				p.P(`m.`, fieldname, ` = &`, field.Message.GoIdent, `{}`)
+				p.P(`}`)
+				p.decodeMessage("m."+fieldname, buf, field.Message)
+			}
+			p.P(`iNdEx = postIndex`)
+			break
+		}
 		p.P(`var msglen int`)
 		p.decodeVarint("msglen", "int")
 		p.P(`if msglen < 0 {`)
@@ -456,43 +634,7 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 			p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
 			p.P(`}`)
 		} else if field.Desc.IsMap() {
-			goTyp, _ := p.FieldGoType(field)
-			goTypK, _ := p.FieldGoType(field.Message.Fields[0])
-			goTypV, _ := p.FieldGoType(field.Message.Fields[1])
-
-			p.P(`if m.`, fieldname, ` == nil {`)
-			p.P(`m.`, fieldname, ` = make(`, goTyp, `)`)
-			p.P(`}`)
-
-			p.P("var mapkey ", goTypK)
-			p.P("var mapvalue ", goTypV)
-			p.P(`for iNdEx < postIndex {`)
-
-			p.P(`entryPreIndex := iNdEx`)
-			p.P(`var wire uint64`)
-			p.decodeVarint("wire", "uint64")
-			p.P(`fieldNum := int32(wire >> 3)`)
-
-			p.P(`if fieldNum == 1 {`)
-			p.mapField("mapkey", field.Message.Fields[0])
-			p.P(`} else if fieldNum == 2 {`)
-			p.mapField("mapvalue", field.Message.Fields[1])
-			p.P(`} else {`)
-			p.P(`iNdEx = entryPreIndex`)
-			p.P(`skippy, err := `, p.Helper("Skip"), `(dAtA[iNdEx:])`)
-			p.P(`if err != nil {`)
-			p.P(`return err`)
-			p.P(`}`)
-			p.P(`if (skippy < 0) || (iNdEx + skippy) < 0 {`)
-			p.P(`return `, p.Helper("ErrInvalidLength"))
-			p.P(`}`)
-			p.P(`if (iNdEx + skippy) > postIndex {`)
-			p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
-			p.P(`}`)
-			p.P(`iNdEx += skippy`)
-			p.P(`}`)
-			p.P(`}`)
-			p.P(`m.`, fieldname, `[mapkey] = mapvalue`)
+			p.mapMessageField(fieldname, field, "postIndex")
 		} else if repeated {
 			p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, &`, field.Message.GoIdent, `{})`)
 			varname := fmt.Sprintf("m.%s[len(m.%s) - 1]", fieldname, fieldname)
@@ -507,44 +649,60 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 		p.P(`iNdEx = postIndex`)
 
 	case protoreflect.BytesKind:
-		p.P(`var byteLen int`)
-		p.decodeVarint("byteLen", "int")
-		p.P(`if byteLen < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`postIndex := iNdEx + byteLen`)
-		p.P(`if postIndex < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`if postIndex > l {`)
-		p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
-		p.P(`}`)
-		if oneof {
-			if p.unsafe {
-				p.P(`v := dAtA[iNdEx:postIndex]`)
+		if p.Config.HelperCodegen() {
+			if oneof {
+				p.P(`var v []byte`)
+				p.decodeBytesValue("v", !p.unsafe)
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
+			} else if repeated {
+				p.P(`var v []byte`)
+				p.decodeBytesValue("v", !p.unsafe)
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, v)`)
+			} else if p.unsafe {
+				p.decodeBytesValue("m."+fieldname, false)
 			} else {
-				p.P(`v := make([]byte, postIndex-iNdEx)`)
-				p.P(`copy(v, dAtA[iNdEx:postIndex])`)
-			}
-			p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
-		} else if repeated {
-			if p.unsafe {
-				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, dAtA[iNdEx:postIndex])`)
-			} else {
-				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, make([]byte, postIndex-iNdEx))`)
-				p.P(`copy(m.`, fieldname, `[len(m.`, fieldname, `)-1], dAtA[iNdEx:postIndex])`)
+				p.decodeBytesAppend("m." + fieldname)
 			}
 		} else {
-			if p.unsafe {
-				p.P(`m.`, fieldname, ` = dAtA[iNdEx:postIndex]`)
+			p.P(`var byteLen int`)
+			p.decodeVarint("byteLen", "int")
+			p.P(`if byteLen < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`postIndex := iNdEx + byteLen`)
+			p.P(`if postIndex < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`if postIndex > l {`)
+			p.P(`return `, p.Ident("io", `ErrUnexpectedEOF`))
+			p.P(`}`)
+			if oneof {
+				if p.unsafe {
+					p.P(`v := dAtA[iNdEx:postIndex]`)
+				} else {
+					p.P(`v := make([]byte, postIndex-iNdEx)`)
+					p.P(`copy(v, dAtA[iNdEx:postIndex])`)
+				}
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
+			} else if repeated {
+				if p.unsafe {
+					p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, dAtA[iNdEx:postIndex])`)
+				} else {
+					p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, make([]byte, postIndex-iNdEx))`)
+					p.P(`copy(m.`, fieldname, `[len(m.`, fieldname, `)-1], dAtA[iNdEx:postIndex])`)
+				}
 			} else {
-				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `[:0] , dAtA[iNdEx:postIndex]...)`)
-				p.P(`if m.`, fieldname, ` == nil {`)
-				p.P(`m.`, fieldname, ` = []byte{}`)
-				p.P(`}`)
+				if p.unsafe {
+					p.P(`m.`, fieldname, ` = dAtA[iNdEx:postIndex]`)
+				} else {
+					p.P(`m.`, fieldname, ` = append(m.`, fieldname, `[:0] , dAtA[iNdEx:postIndex]...)`)
+					p.P(`if m.`, fieldname, ` == nil {`)
+					p.P(`m.`, fieldname, ` = []byte{}`)
+					p.P(`}`)
+				}
 			}
+			p.P(`iNdEx = postIndex`)
 		}
-		p.P(`iNdEx = postIndex`)
 	case protoreflect.Uint32Kind:
 		if oneof {
 			p.P(`var v `, typ)
@@ -615,8 +773,12 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 		}
 	case protoreflect.Sint32Kind:
 		p.P(`var v `, typ)
-		p.decodeVarint("v", typ)
-		p.P(`v = `, typ, `((uint32(v) >> 1) ^ uint32(((v&1)<<31)>>31))`)
+		if p.Config.HelperCodegen() {
+			p.decodeSint32("v", typ)
+		} else {
+			p.decodeVarint("v", typ)
+			p.P(`v = `, typ, `((uint32(v) >> 1) ^ uint32(((v&1)<<31)>>31))`)
+		}
 		if oneof {
 			p.P(`m.`, fieldname, ` = &`, field.GoIdent, "{", field.GoName, `: v}`)
 		} else if repeated {
@@ -627,18 +789,32 @@ func (p *unmarshal) fieldItem(field *protogen.Field, fieldname string, message *
 			p.P(`m.`, fieldname, ` = &v`)
 		}
 	case protoreflect.Sint64Kind:
-		p.P(`var v uint64`)
-		p.decodeVarint("v", "uint64")
-		p.P(`v = (v >> 1) ^ uint64((int64(v&1)<<63)>>63)`)
-		if oneof {
-			p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": ", typ, `(v)}`)
-		} else if repeated {
-			p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, typ, `(v))`)
-		} else if !pointer {
-			p.P(`m.`, fieldname, ` = `, typ, `(v)`)
+		if p.Config.HelperCodegen() {
+			p.P(`var v `, typ)
+			p.decodeSint64("v", typ)
+			if oneof {
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": v}")
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, v)`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = v`)
+			} else {
+				p.P(`m.`, fieldname, ` = &v`)
+			}
 		} else {
-			p.P(`v2 := `, typ, `(v)`)
-			p.P(`m.`, fieldname, ` = &v2`)
+			p.P(`var v uint64`)
+			p.decodeVarint("v", "uint64")
+			p.P(`v = (v >> 1) ^ uint64((int64(v&1)<<63)>>63)`)
+			if oneof {
+				p.P(`m.`, fieldname, ` = &`, field.GoIdent, `{`, field.GoName, ": ", typ, `(v)}`)
+			} else if repeated {
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, typ, `(v))`)
+			} else if !pointer {
+				p.P(`m.`, fieldname, ` = `, typ, `(v)`)
+			} else {
+				p.P(`v2 := `, typ, `(v)`)
+				p.P(`m.`, fieldname, ` = &v2`)
+			}
 		}
 	default:
 		panic("not implemented")
@@ -658,35 +834,56 @@ func (p *unmarshal) field(field *protogen.Field, message *protogen.Message, requ
 		p.P(`if wireType == `, strconv.Itoa(int(wireType)), `{`)
 		p.fieldItem(field, fieldname, message)
 		p.P(`} else if wireType == `, strconv.Itoa(int(protowire.BytesType)), `{`)
-		p.P(`var packedLen int`)
-		p.decodeVarint("packedLen", "int")
-		p.P(`if packedLen < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`postIndex := iNdEx + packedLen`)
-		p.P(`if postIndex < 0 {`)
-		p.P(`return `, p.Helper("ErrInvalidLength"))
-		p.P(`}`)
-		p.P(`if postIndex > l {`)
-		p.P(`return `, p.Ident("io", "ErrUnexpectedEOF"))
-		p.P(`}`)
+		if p.Config.HelperCodegen() {
+			p.decodeLengthDelimited("packedStart", "postIndex")
+			p.P(`iNdEx = packedStart`)
+		} else {
+			p.P(`var packedLen int`)
+			p.decodeVarint("packedLen", "int")
+			p.P(`if packedLen < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`postIndex := iNdEx + packedLen`)
+			p.P(`if postIndex < 0 {`)
+			p.P(`return `, p.Helper("ErrInvalidLength"))
+			p.P(`}`)
+			p.P(`if postIndex > l {`)
+			p.P(`return `, p.Ident("io", "ErrUnexpectedEOF"))
+			p.P(`}`)
+		}
 
 		p.P(`var elementCount int`)
 		switch field.Desc.Kind() {
 		case protoreflect.DoubleKind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-			p.P(`elementCount = packedLen/`, 8)
+			if p.Config.HelperCodegen() {
+				p.P(`elementCount = `, p.Helper("PackedFixedElementCount"), `(dAtA[iNdEx:postIndex], 8)`)
+			} else {
+				p.P(`elementCount = packedLen/`, 8)
+			}
 		case protoreflect.FloatKind, protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
-			p.P(`elementCount = packedLen/`, 4)
-		case protoreflect.Int64Kind, protoreflect.Uint64Kind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind:
-			p.P(`var count int`)
-			p.P(`for _, integer := range dAtA[iNdEx:postIndex] {`)
-			p.P(`if integer < 128 {`)
-			p.P(`count++`)
-			p.P(`}`)
-			p.P(`}`)
-			p.P(`elementCount = count`)
+			if p.Config.HelperCodegen() {
+				p.P(`elementCount = `, p.Helper("PackedFixedElementCount"), `(dAtA[iNdEx:postIndex], 4)`)
+			} else {
+				p.P(`elementCount = packedLen/`, 4)
+			}
+		case protoreflect.Int64Kind, protoreflect.Uint64Kind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.EnumKind, protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+			if p.Config.HelperCodegen() {
+				p.P(`elementCount = `, p.Helper("PackedVarintElementCount"), `(dAtA[iNdEx:postIndex])`)
+			} else {
+				p.P(`var count int`)
+				p.P(`for _, integer := range dAtA[iNdEx:postIndex] {`)
+				p.P(`if integer < 128 {`)
+				p.P(`count++`)
+				p.P(`}`)
+				p.P(`}`)
+				p.P(`elementCount = count`)
+			}
 		case protoreflect.BoolKind:
-			p.P(`elementCount = packedLen`)
+			if p.Config.HelperCodegen() {
+				p.P(`elementCount = `, p.Helper("PackedFixedElementCount"), `(dAtA[iNdEx:postIndex], 1)`)
+			} else {
+				p.P(`elementCount = packedLen`)
+			}
 		}
 
 		p.P(`if elementCount != 0 && len(m.`, fieldname, `) == 0 {`)

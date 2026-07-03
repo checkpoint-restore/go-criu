@@ -1,4 +1,4 @@
-# github.com/aperturerobotics/protobuf-go-lite v0.14.0
+# github.com/aperturerobotics/protobuf-go-lite v0.15.0
 ## explicit; go 1.23
 github.com/aperturerobotics/protobuf-go-lite
 github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite

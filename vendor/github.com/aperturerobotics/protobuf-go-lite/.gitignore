@@ -1,5 +1,6 @@
 /.cache/
 /.gocache/
+/.tmp/
 /bin/
 /vendor/
 .#*

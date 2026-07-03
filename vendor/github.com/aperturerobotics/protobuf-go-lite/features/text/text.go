@@ -88,6 +88,10 @@ func (g *textGenerator) genMessage(message *protogen.Message) {
 	if hasDisableTextComment(message.Comments.Leading) {
 		return
 	}
+	if g.Config.HelperCodegen() {
+		g.genMessageHelper(message)
+		return
+	}
 	// Generate message text marshaling code
 	g.P("func (x *", message.GoIdent, ") MarshalProtoText() string {")
 	g.P("var sb ", g.QualifiedGoIdent(stringsPackage.Ident("Builder")))
@@ -123,6 +127,180 @@ func (g *textGenerator) genMessage(message *protogen.Message) {
 	g.P("func (x *", message.GoIdent, ") String() string {")
 	g.P("return x.MarshalProtoText()")
 	g.P("}")
+}
+
+func (g *textGenerator) genMessageHelper(message *protogen.Message) {
+	g.P("func (x *", message.GoIdent, ") MarshalProtoText() string {")
+	g.P("var sb ", g.Helper("TextBuilder"))
+	if len(message.Fields) == 0 {
+		g.P(g.Helper("TextStartMessage"), "(&sb, \"", message.Desc.Name(), "\")")
+		g.P("return ", g.Helper("TextFinishMessage"), "(&sb)")
+		g.P("}")
+		g.P()
+
+		g.P("func (x *", message.GoIdent, ") String() string {")
+		g.P("return x.MarshalProtoText()")
+		g.P("}")
+		return
+	}
+	g.P("initialLen := ", g.Helper("TextStartMessage"), "(&sb, \"", message.Desc.Name(), "\")")
+
+	handledOneOfs := make(map[string]struct{})
+	for _, field := range message.Fields {
+		if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
+			if _, ok := handledOneOfs[oneof.GoName]; ok {
+				continue
+			}
+			handledOneOfs[oneof.GoName] = struct{}{}
+			g.P("switch body := x.", oneof.GoName, ".(type) {")
+			for _, oneofField := range oneof.Fields {
+				g.P("case *", oneofField.GoIdent, ":")
+				g.genFieldHelper(oneofField, "body."+oneofField.GoName)
+			}
+			g.P("}")
+		} else {
+			accessor := "x." + field.GoName
+			g.genFieldHelper(field, accessor)
+		}
+	}
+	g.P("return ", g.Helper("TextFinishMessage"), "(&sb)")
+	g.P("}")
+	g.P()
+
+	g.P("func (x *", message.GoIdent, ") String() string {")
+	g.P("return x.MarshalProtoText()")
+	g.P("}")
+}
+
+func (g *textGenerator) genFieldHelper(field *protogen.Field, accessor string) {
+	sem := g.FieldSemantics(field)
+	fieldName := string(field.Desc.Name())
+
+	if field.Desc.IsList() {
+		g.P("if len(", accessor, ") > 0 {")
+		g.P(g.Helper("TextWriteListStart"), "(&sb, initialLen, \"", fieldName, "\")")
+		g.P("for i, v := range ", accessor, " {")
+		g.P(g.Helper("TextWriteListSeparator"), "(&sb, i)")
+		g.genFieldValueHelper(field, "v", true)
+		g.P("}")
+		g.P(g.Helper("TextWriteListEnd"), "(&sb)")
+		g.P("}")
+		return
+	}
+
+	if sem.RealOneof {
+		g.P(g.Helper("TextWriteFieldPrefix"), "(&sb, initialLen, \"", fieldName, "\")")
+		g.genFieldValueHelper(field, accessor, false)
+		return
+	}
+
+	switch field.Desc.Kind() {
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		if field.Desc.IsMap() {
+			g.P("if len(", accessor, ") > 0 {")
+			g.P(g.Helper("TextWriteMapStart"), "(&sb, initialLen, \"", fieldName, "\")")
+			g.P("for _, k := range ", g.Helper("TextSortedMapKeys"), "(", accessor, ") {")
+			g.P("v := ", accessor, "[k]")
+			g.P(g.Helper("TextWriteMapEntryPrefix"), "(&sb)")
+			g.genFieldValueHelper(field.Message.Fields[0], "k", true)
+			g.P(g.Helper("TextWriteMapKeyValueSeparator"), "(&sb)")
+			g.genFieldValueHelper(field.Message.Fields[1], "v", true)
+			g.P("}")
+			g.P(g.Helper("TextWriteMapEnd"), "(&sb)")
+			g.P("}")
+		} else {
+			g.P("if ", accessor, " != nil {")
+			g.P(g.Helper("TextWriteFieldPrefix"), "(&sb, initialLen, \"", fieldName, "\")")
+			g.P(g.Helper("TextWriteTextMarshaler"), "(&sb, ", accessor, ")")
+			g.P("}")
+		}
+	case protoreflect.StringKind, protoreflect.BytesKind:
+		if sem.Pointer || sem.EmitDefault {
+			g.P("if ", accessor, " != nil {")
+		} else if field.Desc.Kind() == protoreflect.BytesKind {
+			g.P("if len(", accessor, ") != 0 {")
+		} else {
+			g.P("if ", accessor, " != \"\" {")
+		}
+		g.P(g.Helper("TextWriteFieldPrefix"), "(&sb, initialLen, \"", fieldName, "\")")
+		g.genFieldValueHelper(field, accessor, false)
+		g.P("}")
+	case protoreflect.EnumKind, protoreflect.Int32Kind, protoreflect.Int64Kind,
+		protoreflect.Sint32Kind, protoreflect.Sint64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind,
+		protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind,
+		protoreflect.FloatKind, protoreflect.DoubleKind, protoreflect.BoolKind:
+		zeroValue := "0"
+		if field.Desc.Kind() == protoreflect.BoolKind {
+			zeroValue = "false"
+		}
+		if sem.Pointer {
+			g.P("if ", accessor, " != nil {")
+		} else {
+			g.P("if ", accessor, " != ", zeroValue, " {")
+		}
+		g.P(g.Helper("TextWriteFieldPrefix"), "(&sb, initialLen, \"", fieldName, "\")")
+		g.genFieldValueHelper(field, accessor, false)
+		g.P("}")
+	default:
+		return
+	}
+}
+
+func (g *textGenerator) genFieldValueHelper(field *protogen.Field, accessor string, isList bool) {
+	isPointer := g.FieldSemantics(field).Pointer && !isList
+	switch field.Desc.Kind() {
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		g.P("if ", accessor, " == nil {")
+		g.P(g.Helper("TextWriteTextMarshaler"), "(&sb, &", field.Message.GoIdent, "{})")
+		g.P("} else {")
+		g.P(g.Helper("TextWriteTextMarshaler"), "(&sb, ", accessor, ")")
+		g.P("}")
+	case protoreflect.StringKind:
+		if isPointer {
+			g.P(g.Helper("TextWriteString"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteString"), "(&sb, ", accessor, ")")
+		}
+	case protoreflect.BytesKind:
+		g.P(g.Helper("TextWriteBytes"), "(&sb, ", accessor, ")")
+	case protoreflect.EnumKind:
+		if isPointer {
+			g.P(g.Helper("TextWriteStringer"), "(&sb, ", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteStringer"), "(&sb, ", field.Enum.GoIdent, "(", accessor, "))")
+		}
+	case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind,
+		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
+		if isPointer {
+			g.P(g.Helper("TextWriteInt"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteInt"), "(&sb, ", accessor, ")")
+		}
+	case protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
+		if isPointer {
+			g.P(g.Helper("TextWriteUint"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteUint"), "(&sb, ", accessor, ")")
+		}
+	case protoreflect.FloatKind:
+		if isPointer {
+			g.P(g.Helper("TextWriteFloat32"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteFloat32"), "(&sb, ", accessor, ")")
+		}
+	case protoreflect.DoubleKind:
+		if isPointer {
+			g.P(g.Helper("TextWriteFloat64"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteFloat64"), "(&sb, ", accessor, ")")
+		}
+	case protoreflect.BoolKind:
+		if isPointer {
+			g.P(g.Helper("TextWriteBool"), "(&sb, *", accessor, ")")
+		} else {
+			g.P(g.Helper("TextWriteBool"), "(&sb, ", accessor, ")")
+		}
+	}
 }
 
 func (g *textGenerator) genField(sbInitialLen int, field *protogen.Field, accessor string) {

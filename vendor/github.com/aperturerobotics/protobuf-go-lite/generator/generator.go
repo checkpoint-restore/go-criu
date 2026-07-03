@@ -57,9 +57,34 @@ type Config struct {
 	Poolable ObjectSet
 	// PoolableExclude rules determines if pool feature disabled for particular message
 	PoolableExclude ObjectSet
+	CodegenMode     CodegenMode
 	WellKnownTypes  bool
 	AllowEmpty      bool
 	BuildTag        string
+}
+
+type CodegenMode string
+
+const (
+	CodegenModeHelper   CodegenMode = "helper"
+	CodegenModeUnrolled CodegenMode = "unrolled"
+)
+
+func (c *Config) SetCodegenMode(mode string) error {
+	switch CodegenMode(mode) {
+	case "", CodegenModeHelper:
+		c.CodegenMode = CodegenModeHelper
+		return nil
+	case CodegenModeUnrolled:
+		c.CodegenMode = CodegenModeUnrolled
+		return nil
+	default:
+		return fmt.Errorf("unknown codegen mode: %q", mode)
+	}
+}
+
+func (c *Config) HelperCodegen() bool {
+	return c == nil || c.CodegenMode != CodegenModeUnrolled
 }
 
 type Generator struct {

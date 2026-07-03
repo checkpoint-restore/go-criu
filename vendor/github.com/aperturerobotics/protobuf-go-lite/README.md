@@ -12,7 +12,8 @@
 **protobuf-go-lite** is a stripped-down version of the [protobuf-go] code
 generator modified to work without reflection and merged with [vtprotobuf] to
 provide modular features with static code generation for marshal/unmarshal,
-size, clone, and equal. It bundles a fork of [protoc-gen-go-json] for JSON.
+size, clone, equal, text, and JSON. JSON support is derived from a fork of
+[protoc-gen-go-json].
 
 [protobuf-go]: https://github.com/protocolbuffers/protobuf-go
 [vtprotobuf]: https://github.com/planetscale/vtprotobuf
@@ -30,6 +31,15 @@ supports explicit and implicit presence, legacy required fields, packed
 encoding, delimited message encoding, oneofs, maps, clone/equal, text,
 unmarshal, unsafe unmarshal, and JSON when the resolved JSON format is
 `ALLOW`.
+
+Generated output is static Go code. The default `codegen=helper` mode emits
+message methods that call small concrete helpers from the root
+`protobuf-go-lite` runtime package to keep generated `.pb.go` files smaller.
+The fallback `codegen=unrolled` mode keeps the older inline method-body shape
+for helper-converted method families when callers need to inspect or compare
+that output. Neither mode relies on Go reflection, descriptors, struct tags, or
+runtime type metadata for generated marshal, unmarshal, size, clone, equal,
+text, or JSON behavior.
 
 protobuf-go-lite rejects Edition schemas that require closed enum semantics,
 `LEGACY_BEST_EFFORT` JSON, or explicit hybrid/opaque Go APIs. It does not
@@ -94,7 +104,7 @@ Summary of the packages provided by this module:
         protoc \
           --plugin protoc-gen-go-lite="${GOBIN}/protoc-gen-go-lite" \
           --go-lite_out=.  \
-          --go-lite_opt=features=marshal+unmarshal+size+equal+clone \
+          --go-lite_opt=features=marshal+unmarshal+size+equal+clone+text \
         proto/$${name}.proto; \
     done
     ```
@@ -103,21 +113,50 @@ Summary of the packages provided by this module:
 
 Check out the [template](https://github.com/aperturerobotics/template) for a quick start!
 
+### Code generation modes
+
+`protoc-gen-go-lite` accepts `codegen=helper` and `codegen=unrolled`:
+
+- `codegen=helper` is the default. It emits static message methods that call
+  concrete runtime helpers such as encode, decode, clone/equal, size, and text
+  helpers.
+- `codegen=unrolled` emits the older inline method-body style for
+  helper-converted method families. Select it by adding `codegen=unrolled` to
+  `--go-lite_opt`.
+
+Both modes are selected at generation time and produce normal Go packages for
+callers. They do not add a reflection registry, descriptor builder, struct tag
+interpreter, or runtime type-metadata dependency to generated fast paths.
+
+### Generated output
+
+Generated `.pb.go` files are checked in for this repository's fixtures and
+well-known type packages. After changing the generator or runtime helpers,
+regenerate and verify them with the GNU Make targets:
+
+```
+gmake gengo
+gmake check-gengo
+```
+
+On systems where `make` is GNU Make, `make check-gengo` is equivalent. On macOS,
+use `gmake` so the same GNU Make behavior is used locally and in Linux CI.
+
 ## Available features
 
-The following additional features from vtprotobuf can be enabled:
+The following additional features can be enabled:
 
-- `size`: generates a `func (p *YourProto) SizeVT() int` helper that behaves identically to calling `proto.Size(p)` on the message, except the size calculation is fully unrolled and does not use reflection. This helper function can be used directly, and it'll also be used by the `marshal` codegen to ensure the destination buffer is properly sized before ProtoBuf objects are marshalled to it.
+- `size`: generates a `func (p *YourProto) SizeVT() int` helper that behaves identically to calling `proto.Size(p)` on the message, except the size calculation is static generated code and does not use reflection. This helper function can be used directly, and it'll also be used by the `marshal` codegen to ensure the destination buffer is properly sized before ProtoBuf objects are marshalled to it.
 
 - `equal`: generates the following helper methods
 
-    - `func (this *YourProto) EqualVT(that *YourProto) bool`: this function behaves almost identically to calling `proto.Equal(this, that)` on messages, except the equality calculation is fully unrolled and does not use reflection. This helper function can be used directly.
+    - `func (this *YourProto) EqualVT(that *YourProto) bool`: this function behaves almost identically to calling `proto.Equal(this, that)` on messages, except the equality calculation is static generated code and does not use reflection. This helper function can be used directly.
 
     - `func (this *YourProto) EqualMessageVT(thatMsg any) bool`: this function behaves like the above `this.EqualVT(that)`, but allows comparing against arbitrary proto messages. If `thatMsg` is not of type `*YourProto`, false is returned. The uniform signature provided by this method allows accessing this method via type assertions even if the message type is not known at compile time. This allows implementing a generic `func EqualVT(proto.Message, proto.Message) bool` without reflection.
 
 - `marshal`: generates the following helper methods
 
-    - `func (p *YourProto) MarshalVT() ([]byte, error)`: this function behaves identically to calling `proto.Marshal(p)`, except the actual marshalling has been fully unrolled and does not use reflection or allocate memory. This function simply allocates a properly sized buffer by calling `SizeVT` on the message and then uses `MarshalToSizedBufferVT` to marshal to it.
+    - `func (p *YourProto) MarshalVT() ([]byte, error)`: this function behaves identically to calling `proto.Marshal(p)`, except the actual marshalling is static generated code and does not use reflection or allocate memory. This function simply allocates a properly sized buffer by calling `SizeVT` on the message and then uses `MarshalToSizedBufferVT` to marshal to it.
 
     - `func (p *YourProto) MarshalToVT(data []byte) (int, error)`: this function can be used to marshal a message to an existing buffer. The buffer must be large enough to hold the marshalled message, otherwise this function will panic. It returns the number of bytes marshalled. This function is useful e.g. when using memory pooling to re-use serialization buffers.
 
@@ -132,25 +171,30 @@ The following additional features from vtprotobuf can be enabled:
     - `func (p *YourProto) MarshalToSizedBufferVTStrict(data []byte) (int, error)`: this function behaves like `MarshalToSizedBufferVT`, except fields are marshalled in a strict order by field's numbers they were declared in .proto file.
 
 
-- `unmarshal`: generates a `func (p *YourProto) UnmarshalVT(data []byte)` that behaves similarly to calling `proto.Unmarshal(data, p)` on the message, except the unmarshalling is performed by unrolled codegen without using reflection and allocating as little memory as possible. If the receiver `p` is **not** fully zeroed-out, the unmarshal call will actually behave like `proto.Merge(data, p)`. This is because the `proto.Unmarshal` in the ProtoBuf API is implemented by resetting the destination message and then calling `proto.Merge` on it. To ensure proper `Unmarshal` semantics, ensure you've called `proto.Reset` on your message before calling `UnmarshalVT`, or that your message has been newly allocated.
+- `unmarshal`: generates a `func (p *YourProto) UnmarshalVT(data []byte)` that behaves similarly to calling `proto.Unmarshal(data, p)` on the message, except the unmarshalling is performed by static generated code without using reflection and allocating as little memory as possible. If the receiver `p` is **not** fully zeroed-out, the unmarshal call will actually behave like `proto.Merge(data, p)`. This is because the `proto.Unmarshal` in the ProtoBuf API is implemented by resetting the destination message and then calling `proto.Merge` on it. To ensure proper `Unmarshal` semantics, ensure you've called `proto.Reset` on your message before calling `UnmarshalVT`, or that your message has been newly allocated.
 
 - `unmarshal_unsafe` generates a `func (p *YourProto) UnmarshalVTUnsafe(data []byte)` that behaves like `UnmarshalVT`, except it unsafely casts slices of data to `bytes` and `string` fields instead of copying them to newly allocated arrays, so that it performs less allocations. **Data received from the wire has to be left untouched for the lifetime of the message.** Otherwise, the message's `bytes` and `string` fields can be corrupted.
 
 - `clone`: generates the following helper methods
 
-    - `func (p *YourProto) CloneVT() *YourProto`: this function behaves similarly to calling `proto.Clone(p)` on the message, except the cloning is performed by unrolled codegen without using reflection. If the receiver `p` is `nil` a typed `nil` is returned.
+    - `func (p *YourProto) CloneVT() *YourProto`: this function behaves similarly to calling `proto.Clone(p)` on the message, except the cloning is performed by static generated code without using reflection. If the receiver `p` is `nil` a typed `nil` is returned.
 
     - `func (p *YourProto) CloneMessageVT() any`: this function behaves like the above `p.CloneVT()`, but provides a uniform signature in order to be accessible via type assertions even if the type is not known at compile time. This allows implementing a generic `func CloneMessageVT() any` without reflection. If the receiver `p` is `nil`, a typed `nil` pointer of the message type will be returned inside a `any` interface.
 
 - `json`: generates the following helper methods
 
-    - `func (p *YourProto) UnmarshalJSON(data []byte) error` behaves similarly to calling `protojson.Unmarshal(data, p)` on the message, except the unmarshalling is performed by unrolled codegen without using reflection and allocating as little memory as possible (with json-iterator/go). If the receiver `p` is **not** fully zeroed-out, the unmarshal call will actually behave like `proto.Merge(data, p)`. To ensure proper `Unmarshal` semantics, ensure you've called `proto.Reset` on your message before calling `UnmarshalJSON`, or that your message has been newly allocated.
+    - `func (p *YourProto) UnmarshalJSON(data []byte) error` behaves similarly to calling `protojson.Unmarshal(data, p)` on the message, except the unmarshalling is performed by static generated code without using reflection and allocating as little memory as possible. If the receiver `p` is **not** fully zeroed-out, the unmarshal call will actually behave like `proto.Merge(data, p)`. To ensure proper `Unmarshal` semantics, ensure you've called `proto.Reset` on your message before calling `UnmarshalJSON`, or that your message has been newly allocated.
 
     - `func (p *YourProto) UnmarshalJSONValue(val *fastjson.Value) error` unmarshals a `*fastjson.Value`.
 
-    - `func (p *YourProto) MarshalJSON() ([]byte, error)` behaves similarly to calling `protojson.Marshal(p)` on the message, except the marshalling is performed by unrolled codegen without using reflection and allocating as little memory as possible (with json-iterator/go).
+    - `func (p *YourProto) MarshalJSON() ([]byte, error)` behaves similarly to calling `protojson.Marshal(p)` on the message, except the marshalling is performed by static generated code without using reflection and allocating as little memory as possible.
 
     - Adding a `//protobuf-go-lite:disable-json` comment before a message or enum will disable the json marshaler / unmarshaler.
+
+- `text`: generates `MarshalProtoText() string` and `String() string` methods
+  that emit protobuf text-format-style output using static generated code
+  without reflection. Adding a `//protobuf-go-lite:disable-text` comment before
+  a message disables text generation for that message.
 
 ## License
 
