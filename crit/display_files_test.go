@@ -3,10 +3,15 @@ package crit
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/fdinfo"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/fown"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/memfd"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/regfile"
 	sk_inet "github.com/checkpoint-restore/go-criu/v8/crit/images/sk-inet"
+	sk_opts "github.com/checkpoint-restore/go-criu/v8/crit/images/sk-opts"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -119,6 +124,47 @@ func TestMarshalFileEntryHumanINETSKSkDictNumericFallback(t *testing.T) {
 	}
 }
 
+func TestMarshalFileEntryHumanINETSKOptsUint64Numbers(t *testing.T) {
+	isk := marshalHumanInetSk(t, &sk_inet.InetSkEntry{
+		Family: proto.Uint32(2),
+		Type:   proto.Uint32(1),
+		Proto:  proto.Uint32(6),
+		State:  proto.Uint32(7),
+		Opts: &sk_opts.SkOptsEntry{
+			SoSndbuf:     proto.Uint32(4096),
+			SoRcvbuf:     proto.Uint32(8192),
+			SoSndTmoSec:  proto.Uint64(1),
+			SoSndTmoUsec: proto.Uint64(2),
+			SoRcvTmoSec:  proto.Uint64(3),
+			SoRcvTmoUsec: proto.Uint64(4),
+			SoFilter:     []uint64{5},
+		},
+	})
+
+	opts, ok := isk["opts"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected opts object, got %#v", isk["opts"])
+	}
+
+	checks := map[string]float64{
+		"so_snd_tmo_sec":  1,
+		"so_snd_tmo_usec": 2,
+		"so_rcv_tmo_sec":  3,
+		"so_rcv_tmo_usec": 4,
+	}
+	for key, want := range checks {
+		got, ok := opts[key].(float64)
+		if !ok || got != want {
+			t.Errorf("opts.%s: want numeric %v, got %#v", key, want, opts[key])
+		}
+	}
+
+	filter, ok := opts["so_filter"].([]any)
+	if !ok || len(filter) != 1 || filter[0] != float64(5) {
+		t.Errorf("opts.so_filter: want numeric [5], got %#v", opts["so_filter"])
+	}
+}
+
 func TestMarshalFileEntryHumanINETSKPreservesFieldOrder(t *testing.T) {
 	entry := &fdinfo.FileEntry{
 		Id:   proto.Uint32(7),
@@ -187,6 +233,86 @@ func TestMarshalFileEntryHumanRegUsesProtojson(t *testing.T) {
 	}
 }
 
+func TestMarshalFileEntryHumanRegMatchesPythonPrettyFields(t *testing.T) {
+	entry := &fdinfo.FileEntry{
+		Id:   proto.Uint32(1),
+		Type: fdinfo.FdTypes_REG.Enum(),
+		Reg: &regfile.RegFileEntry{
+			Id:    proto.Uint32(1),
+			Flags: proto.Uint32(0o00100002),
+			Pos:   proto.Uint64(9),
+			Fown: &fown.FownEntry{
+				Uid:     proto.Uint32(0),
+				Euid:    proto.Uint32(0),
+				Signum:  proto.Uint32(0),
+				PidType: proto.Uint32(0),
+				Pid:     proto.Uint32(0),
+			},
+			Name: proto.String("/tmp/file"),
+			Size: proto.Uint64(123),
+		},
+	}
+
+	data, err := marshalFileEntryHuman(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := got["reg"].(map[string]any)
+	if reg["flags"] != "O_RDWR | O_LARGEFILE" {
+		t.Errorf("reg.flags: want O_RDWR | O_LARGEFILE, got %#v", reg["flags"])
+	}
+	if reg["pos"] != float64(9) {
+		t.Errorf("reg.pos: want numeric 9, got %#v", reg["pos"])
+	}
+	if reg["size"] != float64(123) {
+		t.Errorf("reg.size: want numeric 123, got %#v", reg["size"])
+	}
+}
+
+func TestMarshalFileEntryHumanMemfdMatchesPythonPrettyFields(t *testing.T) {
+	entry := &fdinfo.FileEntry{
+		Id:   proto.Uint32(1),
+		Type: fdinfo.FdTypes_MEMFD.Enum(),
+		Memfd: &memfd.MemfdFileEntry{
+			Id:    proto.Uint32(1),
+			Flags: proto.Uint32(0),
+			Pos:   proto.Uint64(11),
+			Fown: &fown.FownEntry{
+				Uid:     proto.Uint32(0),
+				Euid:    proto.Uint32(0),
+				Signum:  proto.Uint32(0),
+				PidType: proto.Uint32(0),
+				Pid:     proto.Uint32(0),
+			},
+			InodeId: proto.Uint32(7),
+		},
+	}
+
+	data, err := marshalFileEntryHuman(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	memfd := got["memfd"].(map[string]any)
+	if memfd["flags"] != "" {
+		t.Errorf("memfd.flags: want empty string, got %#v", memfd["flags"])
+	}
+	if memfd["pos"] != float64(11) {
+		t.Errorf("memfd.pos: want numeric 11, got %#v", memfd["pos"])
+	}
+}
+
 func TestCriuEntryMarshalJSONHumanizeRegUsesProtojson(t *testing.T) {
 	entry := &CriuEntry{
 		Humanize: true,
@@ -238,6 +364,132 @@ func TestCriuEntryMarshalJSONHumanizeFileEntry(t *testing.T) {
 	isk := got["isk"].(map[string]any)
 	if isk["proto"] != "TCP" {
 		t.Errorf("expected humanized proto, got %v", isk["proto"])
+	}
+}
+
+func TestCriuImageUnmarshalHumanizedFilesEntry(t *testing.T) {
+	entries := []*fdinfo.FileEntry{
+		{
+			Id:   proto.Uint32(1),
+			Type: fdinfo.FdTypes_REG.Enum(),
+			Reg: &regfile.RegFileEntry{
+				Id:    proto.Uint32(1),
+				Flags: proto.Uint32(0),
+				Pos:   proto.Uint64(9),
+				Fown: &fown.FownEntry{
+					Uid:     proto.Uint32(0),
+					Euid:    proto.Uint32(0),
+					Signum:  proto.Uint32(0),
+					PidType: proto.Uint32(0),
+					Pid:     proto.Uint32(0),
+				},
+				Name: proto.String("/tmp/file"),
+				Size: proto.Uint64(123),
+			},
+		},
+		{
+			Id:   proto.Uint32(2),
+			Type: fdinfo.FdTypes_REG.Enum(),
+			Reg: &regfile.RegFileEntry{
+				Id:    proto.Uint32(2),
+				Flags: proto.Uint32(0o00100002),
+				Pos:   proto.Uint64(10),
+				Fown: &fown.FownEntry{
+					Uid:     proto.Uint32(0),
+					Euid:    proto.Uint32(0),
+					Signum:  proto.Uint32(0),
+					PidType: proto.Uint32(0),
+					Pid:     proto.Uint32(0),
+				},
+				Name: proto.String("/tmp/file2"),
+			},
+		},
+		{
+			Id:   proto.Uint32(3),
+			Type: fdinfo.FdTypes_INETSK.Enum(),
+			Isk: &sk_inet.InetSkEntry{
+				Id:      proto.Uint32(3),
+				Ino:     proto.Uint32(106886),
+				Family:  proto.Uint32(2),
+				Type:    proto.Uint32(1),
+				Proto:   proto.Uint32(6),
+				State:   proto.Uint32(7),
+				SrcPort: proto.Uint32(8880),
+				DstPort: proto.Uint32(0),
+				Flags:   proto.Uint32(2),
+				Backlog: proto.Uint32(1),
+				SrcAddr: []uint32{0x0100007f},
+				DstAddr: []uint32{0},
+				Fown: &fown.FownEntry{
+					Uid:     proto.Uint32(0),
+					Euid:    proto.Uint32(0),
+					Signum:  proto.Uint32(0),
+					PidType: proto.Uint32(0),
+					Pid:     proto.Uint32(0),
+				},
+				Opts: &sk_opts.SkOptsEntry{
+					SoSndbuf:     proto.Uint32(4096),
+					SoRcvbuf:     proto.Uint32(8192),
+					SoSndTmoSec:  proto.Uint64(1),
+					SoSndTmoUsec: proto.Uint64(2),
+					SoRcvTmoSec:  proto.Uint64(3),
+					SoRcvTmoUsec: proto.Uint64(4),
+					SoFilter:     []uint64{5},
+				},
+			},
+		},
+	}
+
+	rawEntries := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		data, err := marshalFileEntryHuman(entry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rawEntries = append(rawEntries, string(data))
+	}
+
+	data := []byte(`{"magic":"FILES","entries":[` + strings.Join(rawEntries, ",") + `]}`)
+	img := CriuImage{EntryType: &fdinfo.FileEntry{}}
+	if err := json.Unmarshal(data, &img); err != nil {
+		t.Fatal(err)
+	}
+
+	regZero := img.Entries[0].Message.(*fdinfo.FileEntry).GetReg()
+	if regZero.GetFlags() != 0 || regZero.GetPos() != 9 || regZero.GetSize() != 123 {
+		t.Fatalf("unexpected zero-flag reg entry: flags=%#o pos=%d size=%d", regZero.GetFlags(), regZero.GetPos(), regZero.GetSize())
+	}
+
+	regNames := img.Entries[1].Message.(*fdinfo.FileEntry).GetReg()
+	if regNames.GetFlags() != 0o00100002 {
+		t.Fatalf("reg flags: want %#o, got %#o", 0o00100002, regNames.GetFlags())
+	}
+
+	isk := img.Entries[2].Message.(*fdinfo.FileEntry).GetIsk()
+	checks := map[string]uint32{
+		"family": isk.GetFamily(),
+		"type":   isk.GetType(),
+		"proto":  isk.GetProto(),
+		"state":  isk.GetState(),
+		"flags":  isk.GetFlags(),
+	}
+	wants := map[string]uint32{
+		"family": 2,
+		"type":   1,
+		"proto":  6,
+		"state":  7,
+		"flags":  2,
+	}
+	for field, got := range checks {
+		if got != wants[field] {
+			t.Fatalf("isk.%s: want %d, got %d", field, wants[field], got)
+		}
+	}
+	if got := processIP(isk.GetSrcAddr()); got != "127.0.0.1" {
+		t.Fatalf("isk.src_addr: want 127.0.0.1, got %s", got)
+	}
+	if got := isk.GetOpts().GetSoFilter(); len(got) != 1 || got[0] != 5 {
+		t.Fatalf("opts.so_filter: want [5], got %#v", got)
 	}
 }
 

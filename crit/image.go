@@ -123,6 +123,13 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 		// Create proto struct to hold payload
 		payload := proto.Clone(img.EntryType)
 		jsonPayload, extraPayload := splitJSONData(data)
+		if img.Magic == "FILES" {
+			var err error
+			jsonPayload, err = normalizeFileEntryJSON(jsonPayload)
+			if err != nil {
+				return err
+			}
+		}
 		// Handle proto data
 		if err := protojson.Unmarshal(jsonPayload, payload); err != nil {
 			return err
