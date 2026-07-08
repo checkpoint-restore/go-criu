@@ -133,6 +133,39 @@ func (x CriuPreDumpMode) String() string {
 	return strconv.Itoa(int(x))
 }
 
+type CriuImageIoMode int32
+
+const (
+	CriuImageIoMode_IMAGE_IO_WRITEBACK CriuImageIoMode = 0
+	CriuImageIoMode_IMAGE_IO_DIRECT    CriuImageIoMode = 1
+)
+
+// Enum value maps for CriuImageIoMode.
+var (
+	CriuImageIoMode_name = map[int32]string{
+		0: "IMAGE_IO_WRITEBACK",
+		1: "IMAGE_IO_DIRECT",
+	}
+	CriuImageIoMode_value = map[string]int32{
+		"IMAGE_IO_WRITEBACK": 0,
+		"IMAGE_IO_DIRECT":    1,
+	}
+)
+
+func (x CriuImageIoMode) Enum() *CriuImageIoMode {
+	p := new(CriuImageIoMode)
+	*p = x
+	return p
+}
+
+func (x CriuImageIoMode) String() string {
+	name, valid := CriuImageIoMode_name[int32(x)]
+	if valid {
+		return name
+	}
+	return strconv.Itoa(int(x))
+}
+
 type CriuReqType int32
 
 const (
@@ -471,7 +504,8 @@ type CriuOpts struct {
 	Unprivileged         *bool                  `protobuf:"varint,67,opt,name=unprivileged" json:"unprivileged,omitempty"`
 	LeaveStopped         *bool                  `protobuf:"varint,69,opt,name=leave_stopped,json=leaveStopped" json:"leaveStopped,omitempty"`
 	DisplayStats         *bool                  `protobuf:"varint,70,opt,name=display_stats,json=displayStats" json:"displayStats,omitempty"`
-	LogToStderr          *bool                  `protobuf:"varint,71,opt,name=log_to_stderr,json=logToStderr" json:"logToStderr,omitempty"` //	optional bool			check_mounts		= 128;
+	LogToStderr          *bool                  `protobuf:"varint,71,opt,name=log_to_stderr,json=logToStderr" json:"logToStderr,omitempty"`
+	ImageIoMode          *CriuImageIoMode       `protobuf:"varint,72,opt,name=image_io_mode,json=imageIoMode,def=0" json:"imageIoMode,omitempty"` //	optional bool			check_mounts		= 128;
 }
 
 // Default values for CriuOpts fields.
@@ -482,6 +516,7 @@ const (
 	Default_CriuOpts_GhostLimit  = uint32(1048576)
 	Default_CriuOpts_PreDumpMode = CriuPreDumpMode_SPLICE
 	Default_CriuOpts_NetworkLock = CriuNetworkLockMethod_IPTABLES
+	Default_CriuOpts_ImageIoMode = CriuImageIoMode_IMAGE_IO_WRITEBACK
 )
 
 func (x *CriuOpts) Reset() {
@@ -978,6 +1013,13 @@ func (x *CriuOpts) GetLogToStderr() bool {
 		return *x.LogToStderr
 	}
 	return false
+}
+
+func (x *CriuOpts) GetImageIoMode() CriuImageIoMode {
+	if x != nil && x.ImageIoMode != nil {
+		return *x.ImageIoMode
+	}
+	return Default_CriuOpts_ImageIoMode
 }
 
 type CriuDumpResp struct {
@@ -1757,6 +1799,10 @@ func (m *CriuOpts) CloneVT() *CriuOpts {
 		tmpVal := *rhs
 		r.LogToStderr = &tmpVal
 	}
+	if rhs := m.ImageIoMode; rhs != nil {
+		tmpVal := *rhs
+		r.ImageIoMode = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = slices.Clone(m.unknownFields)
 	}
@@ -2464,6 +2510,9 @@ func (this *CriuOpts) EqualVT(that *CriuOpts) bool {
 	if p, q := this.LogToStderr, that.LogToStderr; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
+	if p, q := this.ImageIoMode, that.ImageIoMode; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -3061,6 +3110,13 @@ func (m *CriuOpts) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.ImageIoMode != nil {
+		i = protobuf_go_lite.EncodeVarint(dAtA, i, uint64(*m.ImageIoMode))
+		i--
+		dAtA[i] = 0x4
+		i--
+		dAtA[i] = 0xc0
 	}
 	if m.LogToStderr != nil {
 		i--
@@ -4631,6 +4687,13 @@ func (m *CriuOpts) MarshalToSizedBufferVTStrict(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.ImageIoMode != nil {
+		i = protobuf_go_lite.EncodeVarint(dAtA, i, uint64(*m.ImageIoMode))
+		i--
+		dAtA[i] = 0x4
+		i--
+		dAtA[i] = 0xc0
 	}
 	if m.LogToStderr != nil {
 		i--
@@ -6216,6 +6279,9 @@ func (m *CriuOpts) SizeVT() (n int) {
 	if m.LogToStderr != nil {
 		n += 3
 	}
+	if m.ImageIoMode != nil {
+		n += 2 + protobuf_go_lite.SizeOfVarint(uint64(*m.ImageIoMode))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -6399,6 +6465,9 @@ func (x CriuNetworkLockMethod) MarshalProtoText() string {
 	return x.String()
 }
 func (x CriuPreDumpMode) MarshalProtoText() string {
+	return x.String()
+}
+func (x CriuImageIoMode) MarshalProtoText() string {
 	return x.String()
 }
 func (x CriuReqType) MarshalProtoText() string {
@@ -7180,6 +7249,15 @@ func (x *CriuOpts) MarshalProtoText() string {
 		}
 		sb.WriteString("log_to_stderr: ")
 		sb.WriteString(strconv.FormatBool(*x.LogToStderr))
+	}
+	if x.ImageIoMode != nil {
+		if sb.Len() > 11 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString("image_io_mode: ")
+		sb.WriteString("\"")
+		sb.WriteString(x.ImageIoMode.String())
+		sb.WriteString("\"")
 	}
 	sb.WriteString("}")
 	return sb.String()
@@ -9311,6 +9389,18 @@ func (m *CriuOpts) UnmarshalVT(dAtA []byte) error {
 			}
 			b := bool(v != 0)
 			m.LogToStderr = &b
+		case 72:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ImageIoMode", wireType)
+			}
+			var v CriuImageIoMode
+			var _v uint64
+			_v, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+			v = CriuImageIoMode(_v)
+			if err != nil {
+				return err
+			}
+			m.ImageIoMode = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protobuf_go_lite.Skip(dAtA[iNdEx:])
@@ -12146,6 +12236,18 @@ func (m *CriuOpts) UnmarshalVTUnsafe(dAtA []byte) error {
 			}
 			b := bool(v != 0)
 			m.LogToStderr = &b
+		case 72:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ImageIoMode", wireType)
+			}
+			var v CriuImageIoMode
+			var _v uint64
+			_v, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+			v = CriuImageIoMode(_v)
+			if err != nil {
+				return err
+			}
+			m.ImageIoMode = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protobuf_go_lite.Skip(dAtA[iNdEx:])
