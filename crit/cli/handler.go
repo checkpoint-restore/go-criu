@@ -37,6 +37,7 @@ import (
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/netdev"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/ns"
 	packet_sock "github.com/checkpoint-restore/go-criu/v8/crit/images/packet-sock"
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pidfd"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/pidns"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/pipe"
 	pipe_data "github.com/checkpoint-restore/go-criu/v8/crit/images/pipe-data"
@@ -179,6 +180,8 @@ func protoHandler(magic string) (proto.Message, error) {
 		return &ns.NsFileEntry{}, nil
 	case "PACKETSK":
 		return &packet_sock.PacketSockEntry{}, nil
+	case "PIDFD":
+		return &pidfd.PidfdEntry{}, nil
 	case "PIDNS":
 		return &pidns.PidnsEntry{}, nil
 	case "PIPES":
