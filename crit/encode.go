@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 
+	ghost_file "github.com/checkpoint-restore/go-criu/v8/crit/images/ghost-file"
 	"github.com/checkpoint-restore/go-criu/v8/magic"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,7 +76,7 @@ func encodeImg(img *CriuImage, f *os.File) error {
 // that are in the standard protobuf format
 func (img *CriuImage) encodeDefault(
 	f *os.File,
-	encodeExtra func(string) ([]byte, error),
+	encodeExtra func(proto.Message, string) ([]byte, error),
 ) error {
 	sizeBuf := make([]byte, 4)
 
@@ -82,6 +84,9 @@ func (img *CriuImage) encodeDefault(
 		payload, err := proto.Marshal(entry.Message)
 		if err != nil {
 			return err
+		}
+		if uint64(len(payload)) > math.MaxUint32 {
+			return errors.New("protobuf payload exceeds the image size field")
 		}
 		// Write size of payload into buffer
 		binary.LittleEndian.PutUint32(sizeBuf, uint32(len(payload)))
@@ -95,14 +100,12 @@ func (img *CriuImage) encodeDefault(
 
 		// Write extra data
 		if encodeExtra != nil {
-			if entry.Extra != "" {
-				extraPayload, err := encodeExtra(entry.Extra)
-				if err != nil {
-					return err
-				}
-				if _, err = f.Write(extraPayload); err != nil {
-					return err
-				}
+			extraPayload, err := encodeExtra(entry.Message, entry.Extra)
+			if err != nil {
+				return err
+			}
+			if _, err = f.Write(extraPayload); err != nil {
+				return err
 			}
 		}
 	}
@@ -112,11 +115,21 @@ func (img *CriuImage) encodeDefault(
 
 // Special handler for ghost image
 func (img *CriuImage) encodeGhostFile(f *os.File) error {
+	if len(img.Entries) == 0 {
+		return errors.New("ghost image has no primary entry")
+	}
+	head, ok := img.Entries[0].Message.(*ghost_file.GhostFileEntry)
+	if !ok || head == nil {
+		return errors.New("ghost image has an invalid primary entry")
+	}
 	sizeBuf := make([]byte, 4)
 	// Write primary entry
 	payload, err := proto.Marshal(img.Entries[0].Message)
 	if err != nil {
 		return err
+	}
+	if uint64(len(payload)) > math.MaxUint32 {
+		return errors.New("ghost primary entry exceeds the image size field")
 	}
 	// Write size of payload into buffer
 	binary.LittleEndian.PutUint32(sizeBuf, uint32(len(payload)))
@@ -128,9 +141,10 @@ func (img *CriuImage) encodeGhostFile(f *os.File) error {
 		return err
 	}
 
-	// If there is only one entry,
-	// then no chunks are present
-	if len(img.Entries) == 1 {
+	if !head.GetChunks() {
+		if len(img.Entries) != 1 {
+			return errors.New("ghost image has chunk entries without the chunks flag")
+		}
 		// Write extra data
 		extraPayload, err := base64.StdEncoding.DecodeString(img.Entries[0].Extra)
 		if err != nil {
@@ -142,19 +156,38 @@ func (img *CriuImage) encodeGhostFile(f *os.File) error {
 
 		return nil
 	}
+	if head.Size == nil {
+		return errors.New("chunked ghost image has no file size")
+	}
+	if img.Entries[0].Extra != "" {
+		return errors.New("chunked ghost image has payload on its primary entry")
+	}
 
 	// Write chunks
-	for _, entry := range img.Entries[1:] {
+	for index, entry := range img.Entries[1:] {
+		chunk, ok := entry.Message.(*ghost_file.GhostChunkEntry)
+		if !ok || chunk == nil {
+			return fmt.Errorf("ghost chunk %d has an invalid entry", index+1)
+		}
 		payload, err = proto.Marshal(entry.Message)
 		if err != nil {
 			return err
+		}
+		if uint64(len(payload)) > math.MaxUint32 {
+			return fmt.Errorf("ghost chunk %d exceeds the image size field", index+1)
 		}
 		extraPayload, err := base64.StdEncoding.DecodeString(entry.Extra)
 		if err != nil {
 			return err
 		}
+		if uint64(len(extraPayload)) != chunk.GetLen() {
+			return fmt.Errorf("ghost chunk %d payload length does not match len", index+1)
+		}
+		if chunk.GetOff() > head.GetSize() || chunk.GetLen() > head.GetSize()-chunk.GetOff() {
+			return fmt.Errorf("ghost chunk %d exceeds the declared file size", index+1)
+		}
 
-		binary.LittleEndian.PutUint32(sizeBuf, uint32(len(extraPayload)))
+		binary.LittleEndian.PutUint32(sizeBuf, uint32(len(payload)))
 
 		if _, err = f.Write(sizeBuf); err != nil {
 			return err
