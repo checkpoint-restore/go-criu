@@ -32,6 +32,8 @@ func LoadMagic() MagicMap {
 	magicMap.ByValue[1409430855] = "CREDS"
 	magicMap.ByName["CRTOOLS_IMAGES_V1_1"] = 2
 	magicMap.ByValue[2] = "CRTOOLS_IMAGES_V1_1"
+	magicMap.ByName["CRTOOLS_IMAGES_V1_2"] = 3
+	magicMap.ByValue[3] = "CRTOOLS_IMAGES_V1_2"
 	magicMap.ByName["EVENTFD_FILE"] = 1146238754
 	magicMap.ByValue[1146238754] = "EVENTFD_FILE"
 	magicMap.ByName["EVENTPOLL_FILE"] = 1157773400
@@ -104,6 +106,8 @@ func LoadMagic() MagicMap {
 	magicMap.ByValue[1615152664] = "PACKETSK"
 	magicMap.ByName["PAGEMAP"] = 1443381285
 	magicMap.ByValue[1443381285] = "PAGEMAP"
+	magicMap.ByName["PIDFD"] = 1413698902
+	magicMap.ByValue[1413698902] = "PIDFD"
 	magicMap.ByName["PIDNS"] = 1628795686
 	magicMap.ByValue[1628795686] = "PIDNS"
 	magicMap.ByName["PIPES_DATA"] = 1447376649
