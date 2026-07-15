@@ -17,6 +17,35 @@ bats-test: ../../crit/bin/crit test-imgs
 	@echo "Running bats tests"
 	@$(BATS) humanize.bats
 
+CRIU_TREE ?= ../../criu
+CRIU_BIN ?= $(CRIU_TREE)/criu/criu
+
+compression-test: ../../crit/bin/crit
+	$(abspath $(CRIU_BIN)) check --no-default-config --feature compress
+	CRIT_BIN=$(abspath ../../crit/bin/crit) CRIT_COMPRESSION_ACTION=decompress \
+	python3 $(abspath $(CRIU_TREE)/test/zdtm.py) run \
+		-f h \
+		--ignore-taint \
+		--keep-img failed \
+		--criu-bin $(abspath $(CRIU_BIN)) \
+		--script $(abspath compression-action.sh) \
+		-t zdtm/static/compress_pages00 \
+		-t zdtm/static/compress_pages_block00
+	# Run directly because zdtm.py checks dump statistics after the action script.
+	CRIU_TREE=$(abspath $(CRIU_TREE)) \
+		CRIU_BIN=$(abspath $(CRIU_BIN)) \
+		CRIT_BIN=$(abspath ../../crit/bin/crit) \
+		sh $(abspath compression-from-raw-test.sh)
+	CRIT_BIN=$(abspath ../../crit/bin/crit) CRIT_COMPRESSION_ACTION=roundtrip \
+	python3 $(abspath $(CRIU_TREE)/test/zdtm.py) run \
+		-f h \
+		--ignore-taint \
+		--keep-img failed \
+		--criu-bin $(abspath $(CRIU_BIN)) \
+		--script $(abspath compression-action.sh) \
+		--pre 2 \
+		-t zdtm/static/compress_pages_block03
+
 # gen_mmapper_imgs generates CRIU images for mmapper process.
 # Parameters:
 #   $(1) - Memory size for memory mapping.
@@ -79,4 +108,4 @@ clean:
 	@rm -rf test-imgs crit-test /tmp/mmapper-*.log
 	$(MAKE) -C inetsk_sleeper clean
 
-.PHONY: all test integration-test e2e-test bats-test clean
+.PHONY: all test integration-test e2e-test bats-test compression-test clean

@@ -75,3 +75,12 @@ jobs:
         fi
         sudo -E make GO="$GO_BIN" GOFLAGS="" -C crit unit-test
         sudo -E make GO="$GO_BIN" -C test crit-test
+
+    - name: Test checkpoint compression commands
+      if: runner.os == 'Linux' && matrix.criu-branch == 'criu-dev'
+      run: |
+        sudo -E make -C test/crit \
+          GO="$(command -v go)" \
+          CRIU_TREE="$PWD/criu" \
+          CRIU_BIN="$PWD/criu/criu/criu" \
+          compression-test
