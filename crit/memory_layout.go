@@ -131,7 +131,10 @@ func validateMemoryLayerInventory(layer *memoryLayer) error {
 	}
 	layer.hasInventory = true
 	layer.compression = info
+	return validateMemoryLayerCompression(layer, info)
+}
 
+func validateMemoryLayerCompression(layer *memoryLayer, info CompressionInfo) error {
 	if (layer.hasCompression || layer.hasAligned) && !info.Mode.Compressed() {
 		return fmt.Errorf(
 			"%s contains compressed or aligned page metadata, but inventory compression is off",
