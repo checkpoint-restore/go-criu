@@ -10,4 +10,6 @@ message pipe_entry {
 	required uint32		pipe_id		= 2;
 	required uint32		flags		= 3 [(criu).hex = true];
 	required fown_entry	fown		= 4;
+	optional uint32		uid		= 5;
+	optional uint32		gid		= 6;
 }
