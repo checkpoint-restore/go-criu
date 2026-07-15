@@ -43,10 +43,27 @@ or to just check if at least a certain CRIU version is installed:
 
 ## CRIT
 
-The `crit` package provides bindings to decode, encode, and manipulate
+The `crit` package provides bindings to decode, encode, compress, and decompress
 CRIU image files natively within Go. It also provides a CLI tool similar
 to the original CRIT Python tool. To get started with this, see the docs
 at [CRIT (Go library)](https://criu.org/CRIT_%28Go_library%29).
+
+Compression commands process one checkpoint directory at a time. For an
+incremental chain, pass its newest checkpoint: the directory that no other
+checkpoint uses as a parent. Compressing an older layer is unsupported because
+the command cannot update newer checkpoints that depend on it. A standalone
+checkpoint can be compressed normally with `crit compress DIR`.
+Compression requires a full checkpoint with `mm-<pid>.img` metadata to identify
+mappings that must remain raw. Pre-dumps are unsupported.
+By default, every replaced image is kept as a `.bak` file next to it. Remove
+those backups before transforming the same directory again, or pass
+`--in-place` to skip creating them.
+
+Reading compressed checkpoint images is supported on every platform on which
+CRIT builds. The `crit compress` and `crit decompress` transforms preserve
+Linux filesystem metadata and transaction guarantees and are therefore
+available only on Linux; on other systems their Go APIs return
+`errors.ErrUnsupported`.
 
 ## Releases
 
