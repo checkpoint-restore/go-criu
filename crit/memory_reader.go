@@ -2,6 +2,7 @@ package crit
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -18,19 +19,34 @@ type cachedMemoryBlockOffset struct {
 type memoryReadSession struct {
 	layer       *memoryLayer
 	pagesFile   *os.File
+	parent      *memoryReadSession
+	visited     map[string]struct{}
+	identities  []os.FileInfo
 	offsetCache cachedMemoryBlockOffset
 	lz4         memoryLZ4State
 }
 
 func newMemoryReadSession(layer *memoryLayer) (*memoryReadSession, error) {
-	return &memoryReadSession{layer: layer}, nil
+	directory, identity, err := canonicalDirectory(layer.directory)
+	if err != nil {
+		return nil, err
+	}
+	return &memoryReadSession{
+		layer:      layer,
+		visited:    map[string]struct{}{directory: {}},
+		identities: []os.FileInfo{identity},
+	}, nil
 }
 
 func (session *memoryReadSession) close() error {
-	if session.pagesFile == nil {
-		return nil
+	var errs []error
+	if session.parent != nil {
+		errs = append(errs, session.parent.close())
 	}
-	return session.pagesFile.Close()
+	if session.pagesFile != nil {
+		errs = append(errs, session.pagesFile.Close())
+	}
+	return errors.Join(errs...)
 }
 
 func (session *memoryReadSession) ensurePagesFile() error {
@@ -108,7 +124,7 @@ func (session *memoryReadSession) readPageInto(vaddr uint64, page []byte) (bool,
 		return false, nil
 	}
 	if entry.flags&peParent != 0 {
-		return false, fmt.Errorf("page at address %#x is stored in a parent image", vaddr)
+		return session.readParentPageInto(vaddr, page)
 	}
 	if entry.flags&pePresent == 0 {
 		return false, nil
