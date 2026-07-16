@@ -119,19 +119,15 @@ func TestGetMemPages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create a temporary empty memory pages file for testing
-	tmpFilePath := filepath.Join(os.TempDir(), "pages-0.img")
-	tmpFile, err := os.Create(tmpFilePath)
+	// Create a temporary empty memory pages file for testing.
+	emptyPagesDir := t.TempDir()
+	tmpFile, err := os.Create(filepath.Join(emptyPagesDir, "pages-0.img"))
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		_ = tmpFile.Close()
-		if err := os.Remove(tmpFile.Name()); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	mr, err := NewMemoryReader(testImgsDir, pid, sysPageSize)
 	if err != nil {
@@ -194,7 +190,7 @@ func TestGetMemPages(t *testing.T) {
 		{
 			name: "Empty pages file",
 			mr: &MemoryReader{
-				checkpointDir:  os.TempDir(),
+				checkpointDir:  emptyPagesDir,
 				pid:            pid,
 				pageSize:       sysPageSize,
 				pagesID:        0,
@@ -202,20 +198,27 @@ func TestGetMemPages(t *testing.T) {
 			},
 			start:         mr.pagemapEntries[1].GetVaddr(),
 			end:           mr.pagemapEntries[1].GetVaddr() + uint64(sysPageSize)*mr.pagemapEntries[1].GetNrPages(),
-			expectedError: errors.New("EOF"),
+			expectedError: errors.New("pages-0.img contains 0"),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buff, err := tc.mr.GetMemPages(tc.start, tc.end)
-			if err != nil && tc.expectedError != nil {
-				if !strings.Contains(err.Error(), tc.expectedError.Error()) {
-					t.Errorf("Expected error: %v, got error: %v", tc.expectedError, err)
+			if tc.expectedError != nil {
+				if err == nil {
+					t.Fatalf("Expected error containing %q, got nil", tc.expectedError)
 				}
+				if !strings.Contains(err.Error(), tc.expectedError.Error()) {
+					t.Fatalf("Expected error: %v, got error: %v", tc.expectedError, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			if tc.expectedError == nil && buff == nil {
+			if buff == nil {
 				t.Errorf("Returned memory chunk is expected to be non-empty")
 			}
 		})
