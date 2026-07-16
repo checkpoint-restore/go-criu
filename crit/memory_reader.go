@@ -19,6 +19,7 @@ type memoryReadSession struct {
 	layer       *memoryLayer
 	pagesFile   *os.File
 	offsetCache cachedMemoryBlockOffset
+	lz4         memoryLZ4State
 }
 
 func newMemoryReadSession(layer *memoryLayer) (*memoryReadSession, error) {
@@ -145,7 +146,18 @@ func (session *memoryReadSession) readPageInto(vaddr uint64, page []byte) (bool,
 		}
 		return true, nil
 	}
-	return false, fmt.Errorf("LZ4 block at address %#x is not supported", vaddr)
+	if err := session.readLZ4BlockInto(
+		entry,
+		blockIndex,
+		payloadOffset,
+		pageInBlock,
+		blockBytes,
+		vaddr,
+		page,
+	); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func readAtFull(file *os.File, buffer []byte, offset uint64) error {
