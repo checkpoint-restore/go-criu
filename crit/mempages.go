@@ -67,7 +67,9 @@ func NewMemoryReader(checkpointDir string, pid uint32, pageSize int) (*MemoryRea
 // It retrieves the memory content within the
 // specified range defined by the start and end addresses.
 // Addresses without pagemap entries read as zeros. Lazy pages that no image
-// stores cannot be read and return an error.
+// stores cannot be read and return an error. Pages stored in a parent
+// checkpoint are read through the parent link of the checkpoint directory,
+// so the parent checkpoint must be available.
 func (mr *MemoryReader) GetMemPages(start, end uint64) (*bytes.Buffer, error) {
 	if end < start {
 		return nil, fmt.Errorf("memory range end %#x precedes start %#x", end, start)
