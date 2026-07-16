@@ -5,8 +5,9 @@ COVERAGE_PATH ?= $(shell pwd)/.coverage
 CRIU_FEATURE_MEM_TRACK = $(shell if criu check --feature mem_dirty_track > /dev/null; then echo 1; else echo 0; fi)
 CRIU_FEATURE_LAZY_PAGES = $(shell if criu check --feature uffd-noncoop > /dev/null; then echo 1; else echo 0; fi)
 CRIU_FEATURE_PIDFD_STORE = $(shell if criu check --feature pidfd_store > /dev/null; then echo 1; else echo 0; fi)
+CRIU_FEATURE_MEM_COMPRESSION = $(shell if criu check --feature compress > /dev/null; then echo 1; else echo 0; fi)
 
-export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE
+export CRIU_FEATURE_MEM_TRACK CRIU_FEATURE_LAZY_PAGES CRIU_FEATURE_PIDFD_STORE CRIU_FEATURE_MEM_COMPRESSION
 
 TEST_PAYLOAD := piggie/piggie
 TEST_BINARIES := test $(TEST_PAYLOAD) phaul/phaul inheritfd/inheritfd
