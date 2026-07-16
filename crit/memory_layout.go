@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	peParent         uint32 = 1 << 0
-	pePresent        uint32 = 1 << 2
-	pePayloadAligned uint32 = 1 << 3
+	peParent         = uint32(PagemapParent)
+	peLazy           = uint32(PagemapLazy)
+	pePresent        = uint32(PagemapPresent)
+	pePayloadAligned = uint32(PagemapPayloadAligned)
 
 	memoryBlockOffsetStride uint64 = 64
 )
@@ -255,7 +256,7 @@ func indexMemoryLayer(
 		if parent {
 			layer.hasParent = true
 			layer.parentPages += nrPages
-		} else if !present && flags&uint32(PagemapLazy) != 0 {
+		} else if !present && flags&peLazy != 0 {
 			layer.lazyPages += nrPages
 		}
 		if !present {
