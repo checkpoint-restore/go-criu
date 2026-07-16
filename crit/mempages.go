@@ -166,11 +166,10 @@ func (r *memoryEntryReaderAt) ReadAt(buffer []byte, offset int64) (int, error) {
 	}
 	readSize := min(uint64(len(buffer)), entrySize-entryOffset)
 	start := r.entry.vaddr + entryOffset
-	memory, err := r.mr.readMemRange(r.session, start, start+readSize)
-	if err != nil {
+	if err := r.mr.readMemRangeInto(r.session, start, buffer[:readSize]); err != nil {
 		return 0, err
 	}
-	n := copy(buffer, memory.Bytes())
+	n := int(readSize)
 	if n != len(buffer) {
 		return n, io.EOF
 	}
