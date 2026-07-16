@@ -25,7 +25,7 @@ func (c TestNfy) PreDump() error {
 	return nil
 }
 
-func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) error {
+func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string, memCompression bool) error {
 	log.Println("Dumping")
 	pid, err := strconv.ParseInt(pidS, 10, 32)
 	if err != nil {
@@ -42,6 +42,11 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 		ImagesDirFd: proto.Ptr(int32(img.Fd())),
 		LogLevel:    proto.Ptr[int32](4),
 		LogFile:     proto.Ptr("dump.log"),
+	}
+	if memCompression {
+		opts.Compress = proto.Ptr[uint32](1)
+		opts.CompressAcceleration = proto.Ptr[uint32](1)
+		opts.CompressBlockSize = proto.Ptr(uint32(os.Getpagesize()))
 	}
 
 	if prevImg != "" {
@@ -61,22 +66,24 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string) 
 	return nil
 }
 
-func featureCheck(c *criu.Criu) error {
+func featureCheck(c *criu.Criu) (bool, error) {
 	features := &rpc.CriuFeatures{
-		MemTrack:   proto.Ptr(false),
-		LazyPages:  proto.Ptr(false),
-		PidfdStore: proto.Ptr(false),
+		MemTrack:       proto.Ptr(false),
+		LazyPages:      proto.Ptr(false),
+		PidfdStore:     proto.Ptr(false),
+		MemCompression: proto.Ptr(false),
 	}
 	featuresToCompare := &rpc.CriuFeatures{
-		MemTrack:   proto.Ptr(false),
-		LazyPages:  proto.Ptr(false),
-		PidfdStore: proto.Ptr(false),
+		MemTrack:       proto.Ptr(false),
+		LazyPages:      proto.Ptr(false),
+		PidfdStore:     proto.Ptr(false),
+		MemCompression: proto.Ptr(false),
 	}
 	env := os.Getenv("CRIU_FEATURE_MEM_TRACK")
 	if env != "" {
 		val, err := strconv.Atoi(env)
 		if err != nil {
-			return err
+			return false, err
 		}
 		features.MemTrack = proto.Ptr(val != 0)
 		featuresToCompare.MemTrack = proto.Ptr(val != 0)
@@ -85,7 +92,7 @@ func featureCheck(c *criu.Criu) error {
 	if env != "" {
 		val, err := strconv.Atoi(env)
 		if err != nil {
-			return err
+			return false, err
 		}
 		features.LazyPages = proto.Ptr(val != 0)
 		featuresToCompare.LazyPages = proto.Ptr(val != 0)
@@ -94,19 +101,28 @@ func featureCheck(c *criu.Criu) error {
 	if env != "" {
 		val, err := strconv.Atoi(env)
 		if err != nil {
-			return err
+			return false, err
 		}
 		features.PidfdStore = proto.Ptr(val != 0)
 		featuresToCompare.PidfdStore = proto.Ptr(val != 0)
 	}
+	env = os.Getenv("CRIU_FEATURE_MEM_COMPRESSION")
+	if env != "" {
+		val, err := strconv.Atoi(env)
+		if err != nil {
+			return false, err
+		}
+		features.MemCompression = proto.Ptr(val != 0)
+		featuresToCompare.MemCompression = proto.Ptr(val != 0)
+	}
 
 	features, err := c.FeatureCheck(features)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if features.GetMemTrack() != featuresToCompare.GetMemTrack() {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"unexpected MemTrack FeatureCheck result %v:%v",
 			features.GetMemTrack(),
 			featuresToCompare.GetMemTrack(),
@@ -114,7 +130,7 @@ func featureCheck(c *criu.Criu) error {
 	}
 
 	if features.GetLazyPages() != featuresToCompare.GetLazyPages() {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"unexpected LazyPages FeatureCheck result %v:%v",
 			features.GetLazyPages(),
 			featuresToCompare.GetLazyPages(),
@@ -122,23 +138,31 @@ func featureCheck(c *criu.Criu) error {
 	}
 
 	if features.GetPidfdStore() != featuresToCompare.GetPidfdStore() {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"unexpected PidfdStore FeatureCheck result %v:%v",
 			features.GetPidfdStore(),
 			featuresToCompare.GetPidfdStore(),
 		)
 	}
 
+	if features.GetMemCompression() != featuresToCompare.GetMemCompression() {
+		return false, fmt.Errorf(
+			"unexpected MemCompression FeatureCheck result %v:%v",
+			features.GetMemCompression(),
+			featuresToCompare.GetMemCompression(),
+		)
+	}
+
 	isMemTrack := utils.IsMemTrack()
 	if isMemTrack != featuresToCompare.GetMemTrack() {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"unexpected MemTrack FeatureCheck result %v:%v",
 			isMemTrack,
 			featuresToCompare.GetMemTrack(),
 		)
 	}
 
-	return nil
+	return features.GetMemCompression(), nil
 }
 
 // Usage: test $act $pid $images_dir
@@ -176,14 +200,15 @@ func main() {
 		log.Fatalf("Checking for CRIU version %d should have failed.", math.MaxInt)
 	}
 
-	if err = featureCheck(c); err != nil {
+	memCompression, err := featureCheck(c)
+	if err != nil {
 		log.Fatalln(err)
 	}
 
 	act := os.Args[1]
 	switch act {
 	case "dump":
-		err := doDump(c, os.Args[2], os.Args[3], false, "")
+		err := doDump(c, os.Args[2], os.Args[3], false, "", memCompression)
 		if err != nil {
 			log.Fatalln("dump failed:", err)
 		}
@@ -194,11 +219,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = doDump(c, os.Args[2], os.Args[3]+"/pre", true, "")
+		err = doDump(c, os.Args[2], os.Args[3]+"/pre", true, "", memCompression)
 		if err != nil {
 			log.Fatalln("pre-dump failed:", err)
 		}
-		err = doDump(c, os.Args[2], os.Args[3], false, "./pre")
+		err = doDump(c, os.Args[2], os.Args[3], false, "./pre", memCompression)
 		if err != nil {
 			log.Fatalln("dump failed: ", err)
 		}
