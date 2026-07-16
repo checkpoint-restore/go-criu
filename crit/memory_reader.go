@@ -226,6 +226,18 @@ func (mr *MemoryReader) readMemRange(
 	pageSize := uint64(mr.pageSize)
 	page := make([]byte, mr.pageSize)
 	for cursor := start; cursor < end; {
+		entry := session.layer.findEntry(cursor)
+		if entry != nil && entry.flags&pePresent != 0 {
+			runEnd, copied, err := session.copyRawRange(&buffer, entry, cursor, min(end, entry.end))
+			if err != nil {
+				return nil, err
+			}
+			if copied {
+				cursor = runEnd
+				continue
+			}
+		}
+
 		pageAddress := cursor - cursor%pageSize
 		found, err := session.readPageInto(pageAddress, page)
 		if err != nil {
