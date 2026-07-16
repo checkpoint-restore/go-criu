@@ -25,6 +25,7 @@ type MemoryReader struct {
 	pagesID        uint32
 	pageSize       int
 	pagemapEntries []*pagemap.PagemapEntry
+	layer          *memoryLayer
 }
 
 func (mr *MemoryReader) GetPagesID() uint32 {
@@ -38,29 +39,23 @@ func NewMemoryReader(checkpointDir string, pid uint32, pageSize int) (*MemoryRea
 	}
 
 	// Check if the given page size is a positive power of 2, otherwise return an error
-	if (pageSize & (pageSize - 1)) != 0 {
+	if pageSize <= 0 || (pageSize&(pageSize-1)) != 0 {
 		return nil, errors.New("page size should be a positive power of 2")
 	}
 
-	pagemapImg, err := getImg(filepath.Join(checkpointDir, fmt.Sprintf("pagemap-%d.img", pid)), &pagemap.PagemapHead{})
+	pagemapName := fmt.Sprintf("pagemap-%d.img", pid)
+	layer, err := loadMemoryLayer(checkpointDir, pagemapName, pageSize)
 	if err != nil {
 		return nil, err
-	}
-
-	pagesID := pagemapImg.Entries[0].Message.(*pagemap.PagemapHead).GetPagesId()
-
-	pagemapEntries := make([]*pagemap.PagemapEntry, 0)
-
-	for _, entry := range pagemapImg.Entries[1:] {
-		pagemapEntries = append(pagemapEntries, entry.Message.(*pagemap.PagemapEntry))
 	}
 
 	return &MemoryReader{
 		checkpointDir:  checkpointDir,
 		pid:            pid,
 		pageSize:       pageSize,
-		pagesID:        pagesID,
-		pagemapEntries: pagemapEntries,
+		pagesID:        layer.pagesID,
+		pagemapEntries: layer.pagemapEntries,
+		layer:          layer,
 	}, nil
 }
 
