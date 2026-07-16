@@ -215,26 +215,62 @@ func (mr *MemoryReader) readMemRange(
 	session *memoryReadSession,
 	start, end uint64,
 ) (*bytes.Buffer, error) {
-	var buffer bytes.Buffer
 	if end-start > uint64(math.MaxInt) {
 		return nil, fmt.Errorf("memory range %#x-%#x is too large", start, end)
 	}
-	buffer.Grow(int(end - start))
+	buffer := make([]byte, int(end-start))
+	if err := mr.readMemRangeInto(session, start, buffer); err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(buffer), nil
+}
+
+// readMemRangeInto fills output with the memory that starts at start.
+func (mr *MemoryReader) readMemRangeInto(
+	session *memoryReadSession,
+	start uint64,
+	output []byte,
+) error {
+	end := start + uint64(len(output))
 	pageSize := uint64(mr.pageSize)
-	page := make([]byte, mr.pageSize)
+	var scratch []byte
 	for cursor := start; cursor < end; {
+		remaining := output[cursor-start:]
+		entry := session.layer.findEntry(cursor)
+		if entry != nil && entry.flags&pePresent != 0 {
+			runEnd, copied, err := session.copyRawRange(remaining, entry, cursor, min(end, entry.end))
+			if err != nil {
+				return err
+			}
+			if copied {
+				cursor = runEnd
+				continue
+			}
+		}
+
 		pageAddress := cursor - cursor%pageSize
+		pageOffset := cursor - pageAddress
+		readSize := min(pageSize-pageOffset, end-cursor)
+		// Decode whole pages in place and use a scratch page only for
+		// partial pages at the edges of the range.
+		page := remaining[:readSize]
+		if readSize != pageSize {
+			if scratch == nil {
+				scratch = make([]byte, mr.pageSize)
+			}
+			page = scratch
+		}
 		found, err := session.readPageInto(pageAddress, page)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if !found {
 			clear(page)
 		}
-		pageOffset := cursor - pageAddress
-		readSize := min(pageSize-pageOffset, end-cursor)
-		_, _ = buffer.Write(page[pageOffset : pageOffset+readSize])
+		if readSize != pageSize {
+			copy(remaining, page[pageOffset:pageOffset+readSize])
+		}
 		cursor += readSize
 	}
-	return &buffer, nil
+	return nil
 }
