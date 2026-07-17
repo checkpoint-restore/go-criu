@@ -539,7 +539,15 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 		return nil, err
 	}
 	literalPattern, literalOnly := regexPattern.LiteralPrefix()
+	needsStreaming := !literalOnly || len(literalPattern) == 0
 	var patternTable []int
+	var streamPatterns *streamingRegexps
+	if needsStreaming {
+		streamPatterns, err = compileStreamingRegexps(pattern)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	var results []PatternMatch
 
@@ -548,6 +556,10 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
+	var streamReader *memoryRuneReader
+	if needsStreaming {
+		streamReader = newMemoryRuneReader(f, chunkSize)
+	}
 
 	for _, entry := range mr.pagemapEntries {
 		startAddr := entry.GetVaddr()
@@ -562,19 +574,15 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 			initialOffset += e.GetNrPages() * uint64(mr.pageSize)
 		}
 
-		if literalOnly && len(literalPattern) > 0 {
-			if patternTable == nil && uint64(len(literalPattern)) <= entrySize {
-				patternTable = literalFailureTable(literalPattern)
-			}
-			matches, err := searchLiteralPattern(
+		if needsStreaming {
+			matches, err := searchPatternStream(
 				f,
-				literalPattern,
-				patternTable,
+				streamPatterns,
+				streamReader,
 				initialOffset,
 				startAddr,
 				entrySize,
 				context,
-				chunkSize,
 			)
 			if err != nil {
 				return nil, err
@@ -582,43 +590,24 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 			results = append(results, matches...)
 			continue
 		}
-		for offset := uint64(0); offset < entrySize; offset += uint64(chunkSize) {
-			readSize := chunkSize
-			if entrySize-offset < uint64(chunkSize) {
-				readSize = int(entrySize - offset)
-			}
 
-			buff := make([]byte, readSize)
-			if err := readMemoryAt(f, buff, initialOffset, offset); err != nil {
-				return nil, err
-			}
-
-			// Replace non-printable ASCII characters in the buffer with a question mark (0x3f) to prevent unexpected behavior
-			// during regex matching. Non-printable characters might cause incorrect interpretation or premature
-			// termination of strings, leading to inaccuracies in pattern matching.
-			sanitizeMemory(buff)
-
-			indexes := regexPattern.FindAllIndex(buff, -1)
-			for _, index := range indexes {
-				matchStart := offset + uint64(index[0])
-				matchEnd := offset + uint64(index[1])
-				match, err := readPatternMatch(
-					f,
-					initialOffset,
-					startAddr,
-					entrySize,
-					matchStart,
-					matchEnd,
-					context,
-					offset,
-					buff,
-				)
-				if err != nil {
-					return nil, err
-				}
-				results = append(results, match)
-			}
+		if patternTable == nil && uint64(len(literalPattern)) <= entrySize {
+			patternTable = literalFailureTable(literalPattern)
 		}
+		matches, err := searchLiteralPattern(
+			f,
+			literalPattern,
+			patternTable,
+			initialOffset,
+			startAddr,
+			entrySize,
+			context,
+			chunkSize,
+		)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, matches...)
 	}
 
 	return results, nil

@@ -416,6 +416,57 @@ func newSearchPatternMemoryReader(t *testing.T, memory string, truncateAt int) *
 	}
 }
 
+type searchPatternMemoryEntry struct {
+	vaddr  uint64
+	memory string
+}
+
+func newSearchPatternMultiEntryMemoryReader(
+	t *testing.T,
+	entries []searchPatternMemoryEntry,
+	truncateAt int,
+) *MemoryReader {
+	t.Helper()
+	const (
+		pageSize = 8
+		pagesID  = 1
+	)
+
+	var payload []byte
+	pagemapEntries := make([]*pagemap.PagemapEntry, 0, len(entries))
+	for i, entry := range entries {
+		if len(entry.memory)%pageSize != 0 {
+			t.Fatalf("entry %d has %d bytes, want a multiple of %d", i, len(entry.memory), pageSize)
+		}
+		payload = append(payload, entry.memory...)
+		vaddr := entry.vaddr
+		nrPages := uint64(len(entry.memory) / pageSize)
+		compatNrPages := uint32(nrPages)
+		pagemapEntries = append(pagemapEntries, &pagemap.PagemapEntry{
+			Vaddr:         &vaddr,
+			CompatNrPages: &compatNrPages,
+			NrPages:       &nrPages,
+		})
+	}
+	if truncateAt >= 0 {
+		if truncateAt > len(payload) {
+			t.Fatalf("truncate offset %d exceeds payload size %d", truncateAt, len(payload))
+		}
+		payload = payload[:truncateAt]
+	}
+
+	checkpointDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(checkpointDir, "pages-1.img"), payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return &MemoryReader{
+		checkpointDir:  checkpointDir,
+		pagesID:        pagesID,
+		pageSize:       pageSize,
+		pagemapEntries: pagemapEntries,
+	}
+}
+
 func TestSearchPatternContextAcrossChunkBoundary(t *testing.T) {
 	const (
 		chunkSize = 8
@@ -1003,6 +1054,187 @@ func FuzzSearchPatternStream(f *testing.F) {
 				got,
 				want,
 			)
+		}
+	})
+}
+
+func TestSearchRegexpAcrossChunkBoundary(t *testing.T) {
+	const startAddr = 0x1000
+
+	t.Run("returns cross-boundary match with context", func(t *testing.T) {
+		memory := "xxxxxxbegin" + strings.Repeat("x", 20) + "endxx"
+		mr := newSearchPatternMemoryReader(t, memory, -1)
+		matches, err := mr.SearchPattern(`begin.*end`, false, 2, 8)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(matches) != 1 {
+			t.Fatalf("got %d matches, want 1", len(matches))
+		}
+		wantLength := len("begin") + 20 + len("end")
+		if matches[0].Vaddr != startAddr+6 {
+			t.Errorf("address = %#x, want %#x", matches[0].Vaddr, startAddr+6)
+		}
+		if matches[0].Length != wantLength {
+			t.Errorf("length = %d, want %d", matches[0].Length, wantLength)
+		}
+		wantMatch := "xxbegin" + strings.Repeat("x", 20) + "endxx"
+		if matches[0].Match != wantMatch {
+			t.Errorf("match = %q, want %q", matches[0].Match, wantMatch)
+		}
+	})
+
+	t.Run("propagates truncated input", func(t *testing.T) {
+		mr := newSearchPatternMemoryReader(t, "xxxxxxxx", 8)
+		_, err := mr.SearchPattern(`missing.*pattern`, false, 0, 8)
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
+		}
+	})
+}
+
+func TestSearchPatternMultipleEntries(t *testing.T) {
+	t.Run("maps later entry payload offsets", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "abcdefghijklmnop"},
+			{vaddr: 0x5000, memory: "xneedlex"},
+		}
+		for _, tc := range []struct {
+			name    string
+			pattern string
+			escape  bool
+		}{
+			{name: "literal", pattern: "needle", escape: true},
+			{name: "regexp", pattern: `n(?:e|E)edle`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				mr := newSearchPatternMultiEntryMemoryReader(t, entries, -1)
+				matches, err := mr.SearchPattern(tc.pattern, tc.escape, 0, 3)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := []PatternMatch{{Vaddr: 0x5001, Length: 6, Match: "needle"}}
+				if !slices.Equal(matches, want) {
+					t.Fatalf("got %#v, want %#v", matches, want)
+				}
+			})
+		}
+	})
+
+	t.Run("does not match across entries", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "xxxxxabc"},
+			{vaddr: 0x5000, memory: "defxxxxx"},
+		}
+		for _, tc := range []struct {
+			name    string
+			pattern string
+			escape  bool
+		}{
+			{name: "literal", pattern: "abcdef", escape: true},
+			{name: "regexp", pattern: `abc(?:d|D)ef`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				mr := newSearchPatternMultiEntryMemoryReader(t, entries, -1)
+				matches, err := mr.SearchPattern(tc.pattern, tc.escape, 0, 3)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(matches) != 0 {
+					t.Fatalf("got %#v, want no matches", matches)
+				}
+			})
+		}
+	})
+
+	t.Run("clips context at entry boundaries", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "xxxxxabc"},
+			{vaddr: 0x5000, memory: "defxxxxx"},
+		}
+		for _, tc := range []struct {
+			name    string
+			pattern string
+			escape  bool
+			want    PatternMatch
+		}{
+			{
+				name:    "literal suffix",
+				pattern: "abc",
+				escape:  true,
+				want:    PatternMatch{Vaddr: 0x1005, Length: 3, Context: 16, Match: "xxxxxabc"},
+			},
+			{
+				name:    "regexp prefix",
+				pattern: `d(?:e|E)f`,
+				want:    PatternMatch{Vaddr: 0x5000, Length: 3, Context: 16, Match: "defxxxxx"},
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				mr := newSearchPatternMultiEntryMemoryReader(t, entries, -1)
+				matches, err := mr.SearchPattern(tc.pattern, tc.escape, 16, 3)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := []PatternMatch{tc.want}
+				if !slices.Equal(matches, want) {
+					t.Fatalf("got %#v, want %#v", matches, want)
+				}
+			})
+		}
+	})
+
+	t.Run("resets anchors at entry boundaries", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "axxxxxxx"},
+			{vaddr: 0x5000, memory: "ayyyyyyy"},
+		}
+		mr := newSearchPatternMultiEntryMemoryReader(t, entries, -1)
+		matches, err := mr.SearchPattern(`^a`, false, 0, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []PatternMatch{
+			{Vaddr: 0x1000, Length: 1, Match: "a"},
+			{Vaddr: 0x5000, Length: 1, Match: "a"},
+		}
+		if !slices.Equal(matches, want) {
+			t.Fatalf("got %#v, want %#v", matches, want)
+		}
+	})
+
+	t.Run("reports later entry truncation", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "abcdefgh"},
+			{vaddr: 0x5000, memory: "ijklmnop"},
+		}
+		for _, tc := range []struct {
+			name    string
+			pattern string
+			escape  bool
+		}{
+			{name: "literal", pattern: "z", escape: true},
+			{name: "regexp", pattern: `z+`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				mr := newSearchPatternMultiEntryMemoryReader(t, entries, 12)
+				_, err := mr.SearchPattern(tc.pattern, tc.escape, 0, 3)
+				if !errors.Is(err, io.ErrUnexpectedEOF) {
+					t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
+				}
+			})
+		}
+	})
+
+	t.Run("reports truncated later entry context", func(t *testing.T) {
+		entries := []searchPatternMemoryEntry{
+			{vaddr: 0x1000, memory: "abcdefgh"},
+			{vaddr: 0x5000, memory: "needlezz"},
+		}
+		mr := newSearchPatternMultiEntryMemoryReader(t, entries, 14)
+		_, err := mr.SearchPattern("needle", true, 2, 6)
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
 		}
 	})
 }
