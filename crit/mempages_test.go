@@ -2,17 +2,27 @@ package crit
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/checkpoint-restore/go-criu/v8/crit/images/pagemap"
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/pstree"
 )
 
 const (
-	testImgsDir = "test-imgs"
+	testImgsDir               = "test-imgs"
+	searchPatternTestPageSize = 64
 )
+
+type readerAtFunc func([]byte, int64) (int, error)
+
+func (f readerAtFunc) ReadAt(buff []byte, offset int64) (int, error) {
+	return f(buff, offset)
+}
 
 func TestNewMemoryReader(t *testing.T) {
 	pid, err := getTestImgPID()
@@ -343,6 +353,112 @@ func TestSearchPattern(t *testing.T) {
 				if !strings.Contains(match.Match, content.String()) {
 					t.Errorf("Expected to find %s in matched pattern %s", content.String(), match.Match)
 				}
+			}
+		})
+	}
+}
+
+func newSearchPatternMemoryReader(t *testing.T, memory string, truncateAt int) *MemoryReader {
+	t.Helper()
+	if len(memory) > searchPatternTestPageSize {
+		t.Fatalf("memory has %d bytes, page size is %d", len(memory), searchPatternTestPageSize)
+	}
+	memory += strings.Repeat("x", searchPatternTestPageSize-len(memory))
+	fileMemory := memory
+	if truncateAt >= 0 {
+		fileMemory = memory[:truncateAt]
+	}
+
+	const pagesID = 1
+	checkpointDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(checkpointDir, "pages-1.img"), []byte(fileMemory), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	vaddr := uint64(0x1000)
+	compatNrPages := uint32(1)
+	nrPages := uint64(1)
+
+	return &MemoryReader{
+		checkpointDir: checkpointDir,
+		pagesID:       pagesID,
+		pageSize:      searchPatternTestPageSize,
+		pagemapEntries: []*pagemap.PagemapEntry{
+			{
+				Vaddr:         &vaddr,
+				CompatNrPages: &compatNrPages,
+				NrPages:       &nrPages,
+			},
+		},
+	}
+}
+
+func TestSearchPatternContextAcrossChunkBoundary(t *testing.T) {
+	const (
+		chunkSize = 8
+		startAddr = 0x1000
+	)
+	testCases := []struct {
+		name       string
+		memory     string
+		wantOffset uint64
+	}{
+		{name: "match starts at boundary", memory: "xxxxxxxxneedlexx", wantOffset: 8},
+		{name: "match ends at boundary", memory: "xxneedlexxxxxxxx", wantOffset: 2},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mr := newSearchPatternMemoryReader(t, tc.memory, -1)
+			matches, err := mr.SearchPattern("needle", true, 2, chunkSize)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(matches) != 1 {
+				t.Fatalf("got %d matches, want 1", len(matches))
+			}
+			if matches[0].Vaddr != startAddr+tc.wantOffset {
+				t.Errorf("address = %#x, want %#x", matches[0].Vaddr, startAddr+tc.wantOffset)
+			}
+			if matches[0].Length != len("needle") {
+				t.Errorf("length = %d, want %d", matches[0].Length, len("needle"))
+			}
+			if matches[0].Match != "xxneedlexx" {
+				t.Errorf("match = %q, want %q", matches[0].Match, "xxneedlexx")
+			}
+		})
+	}
+}
+
+func TestSearchPatternTruncatedContext(t *testing.T) {
+	mr := newSearchPatternMemoryReader(t, "xxxxxxxx", 8)
+	_, err := mr.SearchPattern("x", true, 8, 8)
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
+	}
+}
+
+func TestReadPatternMatchErrors(t *testing.T) {
+	readErr := errors.New("read failed")
+	testCases := []struct {
+		name      string
+		readerErr error
+		wantErr   error
+	}{
+		{name: "EOF", readerErr: io.EOF, wantErr: io.ErrUnexpectedEOF},
+		{name: "wrapped EOF", readerErr: fmt.Errorf("wrapped: %w", io.EOF), wantErr: io.ErrUnexpectedEOF},
+		{name: "short read", wantErr: io.ErrUnexpectedEOF},
+		{name: "other error", readerErr: readErr, wantErr: readErr},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reader := readerAtFunc(func(buff []byte, _ int64) (int, error) {
+				buff[0] = 'x'
+				return 1, tc.readerErr
+			})
+			_, err := readPatternMatch(reader, 0, 0x1000, 4, 1, 2, 2, 0, nil)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got error %v, want %v", err, tc.wantErr)
 			}
 		})
 	}

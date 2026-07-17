@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -204,6 +205,78 @@ type PatternMatch struct {
 	Match   string
 }
 
+func readMemoryAt(reader io.ReaderAt, buff []byte, initialOffset, offset uint64) error {
+	if len(buff) == 0 {
+		return nil
+	}
+	if initialOffset > uint64(math.MaxInt64) || offset > uint64(math.MaxInt64)-initialOffset {
+		return fmt.Errorf("memory image offset is too large: %d + %d", initialOffset, offset)
+	}
+
+	n, err := reader.ReadAt(buff, int64(initialOffset+offset))
+	if n == len(buff) {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+	if err == nil || errors.Is(err, io.EOF) {
+		return io.ErrUnexpectedEOF
+	}
+	return err
+}
+
+func sanitizeMemory(buff []byte) {
+	for i := range buff {
+		if buff[i] < 32 || buff[i] >= 127 {
+			buff[i] = '?'
+		}
+	}
+}
+
+func readPatternMatch(
+	reader io.ReaderAt,
+	initialOffset, startAddr, entrySize, matchStart, matchEnd uint64,
+	context int,
+	cachedStart uint64,
+	cached []byte,
+) (PatternMatch, error) {
+	contextSize := uint64(context)
+	contextStart := uint64(0)
+	if contextSize < matchStart {
+		contextStart = matchStart - contextSize
+	}
+
+	contextEnd := entrySize
+	if contextSize < entrySize-matchEnd {
+		contextEnd = matchEnd + contextSize
+	}
+
+	readSize := contextEnd - contextStart
+	if readSize > uint64(math.MaxInt) {
+		return PatternMatch{}, fmt.Errorf("memory match is too large: %d bytes", readSize)
+	}
+
+	var buff []byte
+	cachedEnd := cachedStart + uint64(len(cached))
+	if contextStart >= cachedStart && contextEnd <= cachedEnd {
+		buff = cached[contextStart-cachedStart : contextEnd-cachedStart]
+	} else {
+		buff = make([]byte, int(readSize))
+		if err := readMemoryAt(reader, buff, initialOffset, contextStart); err != nil {
+			return PatternMatch{}, err
+		}
+		sanitizeMemory(buff)
+	}
+
+	return PatternMatch{
+		Vaddr:   startAddr + matchStart,
+		Length:  int(matchEnd - matchStart),
+		Context: context,
+		Match:   string(buff),
+	}, nil
+}
+
 // SearchPattern searches for a pattern in the process memory pages.
 func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters bool, context, chunkSize int) ([]PatternMatch, error) {
 	if context < 0 {
@@ -236,6 +309,7 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 	for _, entry := range mr.pagemapEntries {
 		startAddr := entry.GetVaddr()
 		endAddr := startAddr + entry.GetNrPages()*uint64(mr.pageSize)
+		entrySize := endAddr - startAddr
 
 		initialOffset := uint64(0)
 		for _, e := range mr.pagemapEntries {
@@ -245,41 +319,41 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 			initialOffset += e.GetNrPages() * uint64(mr.pageSize)
 		}
 
-		for offset := uint64(0); offset < endAddr-startAddr; offset += uint64(chunkSize) {
+		for offset := uint64(0); offset < entrySize; offset += uint64(chunkSize) {
 			readSize := chunkSize
-			if endAddr-startAddr-offset < uint64(chunkSize) {
-				readSize = int(endAddr - startAddr - offset)
+			if entrySize-offset < uint64(chunkSize) {
+				readSize = int(entrySize - offset)
 			}
 
 			buff := make([]byte, readSize)
-			if _, err := f.ReadAt(buff, int64(initialOffset+offset)); err != nil {
-				if err == io.EOF {
-					break
-				}
+			if err := readMemoryAt(f, buff, initialOffset, offset); err != nil {
 				return nil, err
 			}
 
 			// Replace non-printable ASCII characters in the buffer with a question mark (0x3f) to prevent unexpected behavior
 			// during regex matching. Non-printable characters might cause incorrect interpretation or premature
 			// termination of strings, leading to inaccuracies in pattern matching.
-			for i := range buff {
-				if buff[i] < 32 || buff[i] >= 127 {
-					buff[i] = 0x3F
-				}
-			}
+			sanitizeMemory(buff)
 
 			indexes := regexPattern.FindAllIndex(buff, -1)
 			for _, index := range indexes {
-				startContext := max(index[0]-context, 0)
-
-				endContext := min(index[1]+context, len(buff))
-
-				results = append(results, PatternMatch{
-					Vaddr:   startAddr + offset + uint64(index[0]),
-					Length:  index[1] - index[0],
-					Context: context,
-					Match:   string(buff[startContext:endContext]),
-				})
+				matchStart := offset + uint64(index[0])
+				matchEnd := offset + uint64(index[1])
+				match, err := readPatternMatch(
+					f,
+					initialOffset,
+					startAddr,
+					entrySize,
+					matchStart,
+					matchEnd,
+					context,
+					offset,
+					buff,
+				)
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, match)
 			}
 		}
 	}
