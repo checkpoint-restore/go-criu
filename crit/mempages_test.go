@@ -1,6 +1,7 @@
 package crit
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,27 @@ type readerAtFunc func([]byte, int64) (int, error)
 
 func (f readerAtFunc) ReadAt(buff []byte, offset int64) (int, error) {
 	return f(buff, offset)
+}
+
+type countingReaderAt struct {
+	data       []byte
+	bytesRead  int
+	readStarts []int64
+	readSizes  []int
+}
+
+func (r *countingReaderAt) ReadAt(buff []byte, offset int64) (int, error) {
+	r.readStarts = append(r.readStarts, offset)
+	r.readSizes = append(r.readSizes, len(buff))
+	if offset < 0 || offset >= int64(len(r.data)) {
+		return 0, io.EOF
+	}
+	n := copy(buff, r.data[offset:])
+	r.bytesRead += n
+	if n != len(buff) {
+		return n, io.EOF
+	}
+	return n, nil
 }
 
 func TestNewMemoryReader(t *testing.T) {
@@ -461,6 +483,178 @@ func TestReadPatternMatchErrors(t *testing.T) {
 				t.Fatalf("got error %v, want %v", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestSearchLiteralAcrossChunkBoundary(t *testing.T) {
+	const startAddr = 0x1000
+	testCases := []struct {
+		name        string
+		memory      string
+		pattern     string
+		chunkSize   int
+		context     int
+		wantOffsets []uint64
+		wantMatch   string
+	}{
+		{
+			name:        "crosses boundary",
+			memory:      "xxxxxxneedlexx",
+			pattern:     "needle",
+			chunkSize:   8,
+			context:     2,
+			wantOffsets: []uint64{6},
+			wantMatch:   "xxneedlexx",
+		},
+		{
+			name:        "longer than chunk",
+			memory:      "xxlongneedlexx",
+			pattern:     "longneedle",
+			chunkSize:   4,
+			wantOffsets: []uint64{2},
+			wantMatch:   "longneedle",
+		},
+		{
+			name:        "non-overlapping matches",
+			memory:      "aaaa",
+			pattern:     "aa",
+			chunkSize:   1,
+			wantOffsets: []uint64{0, 2},
+			wantMatch:   "aa",
+		},
+		{
+			name:        "sanitized boundary",
+			memory:      "xxxxxxa\x00bxx",
+			pattern:     "a?b",
+			chunkSize:   8,
+			wantOffsets: []uint64{6},
+			wantMatch:   "a?b",
+		},
+		{
+			name:        "prefix fallback across boundaries",
+			memory:      "xxabababacaxx",
+			pattern:     "ababaca",
+			chunkSize:   3,
+			wantOffsets: []uint64{4},
+			wantMatch:   "ababaca",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mr := newSearchPatternMemoryReader(t, tc.memory, -1)
+			matches, err := mr.SearchPattern(tc.pattern, true, tc.context, tc.chunkSize)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(matches) != len(tc.wantOffsets) {
+				t.Fatalf("got %d matches, want %d", len(matches), len(tc.wantOffsets))
+			}
+			for i, match := range matches {
+				if match.Vaddr != startAddr+tc.wantOffsets[i] {
+					t.Errorf("match %d address = %#x, want %#x", i, match.Vaddr, startAddr+tc.wantOffsets[i])
+				}
+				if match.Length != len(tc.pattern) {
+					t.Errorf("match %d length = %d, want %d", i, match.Length, len(tc.pattern))
+				}
+				if match.Match != tc.wantMatch {
+					t.Errorf("match %d = %q, want %q", i, match.Match, tc.wantMatch)
+				}
+			}
+		})
+	}
+}
+
+func TestSearchLiteralTruncatedInput(t *testing.T) {
+	testCases := []struct {
+		name    string
+		pattern string
+	}{
+		{name: "partial search window", pattern: "needle"},
+		{name: "at chunk boundary", pattern: "z"},
+		{name: "literal longer than entry", pattern: strings.Repeat("x", searchPatternTestPageSize+1)},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mr := newSearchPatternMemoryReader(t, "xxxxxxxx", 8)
+			_, err := mr.SearchPattern(tc.pattern, true, 0, 8)
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
+				t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
+			}
+		})
+	}
+}
+
+func TestSearchLiteralReadsInputOnce(t *testing.T) {
+	const (
+		entrySize = 4096
+		chunkSize = 16
+	)
+	reader := &countingReaderAt{data: bytes.Repeat([]byte{'a'}, entrySize)}
+	literalPattern := strings.Repeat("a", 256) + "b"
+	patternTable := literalFailureTable(literalPattern)
+
+	matches, err := searchLiteralPattern(
+		reader,
+		literalPattern,
+		patternTable,
+		0,
+		0x1000,
+		entrySize,
+		0,
+		chunkSize,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("got %d matches, want 0", len(matches))
+	}
+	if reader.bytesRead != entrySize {
+		t.Fatalf("read %d bytes, want %d", reader.bytesRead, entrySize)
+	}
+	for i, offset := range reader.readStarts {
+		wantOffset := int64(i * chunkSize)
+		if offset != wantOffset {
+			t.Fatalf("read %d starts at %d, want %d", i, offset, wantOffset)
+		}
+		wantSize := min(chunkSize, entrySize-i*chunkSize)
+		if reader.readSizes[i] != wantSize {
+			t.Fatalf("read %d has size %d, want %d", i, reader.readSizes[i], wantSize)
+		}
+	}
+}
+
+func BenchmarkSearchLiteralPattern(b *testing.B) {
+	const (
+		entrySize = 1 << 20
+		chunkSize = 256
+	)
+	memory := bytes.Repeat([]byte{'a'}, entrySize)
+	literalPattern := strings.Repeat("a", 4096) + "b"
+	patternTable := literalFailureTable(literalPattern)
+	reader := bytes.NewReader(memory)
+	b.ReportAllocs()
+	b.SetBytes(entrySize)
+
+	for b.Loop() {
+		matches, err := searchLiteralPattern(
+			reader,
+			literalPattern,
+			patternTable,
+			0,
+			0x1000,
+			entrySize,
+			0,
+			chunkSize,
+		)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(matches) != 0 {
+			b.Fatalf("got %d matches, want 0", len(matches))
+		}
 	}
 }
 

@@ -277,6 +277,90 @@ func readPatternMatch(
 	}, nil
 }
 
+func literalFailureTable(pattern string) []int {
+	table := make([]int, len(pattern))
+	matched := 0
+	for i := 1; i < len(pattern); i++ {
+		for matched > 0 && pattern[i] != pattern[matched] {
+			matched = table[matched-1]
+		}
+		if pattern[i] == pattern[matched] {
+			matched++
+		}
+		table[i] = matched
+	}
+	return table
+}
+
+func searchLiteralPattern(
+	reader io.ReaderAt,
+	literalPattern string,
+	patternTable []int,
+	initialOffset, startAddr, entrySize uint64,
+	context, chunkSize int,
+) ([]PatternMatch, error) {
+	if len(literalPattern) == 0 {
+		return nil, errors.New("literal pattern cannot be empty")
+	}
+	canMatch := uint64(len(literalPattern)) <= entrySize
+	if canMatch && len(patternTable) != len(literalPattern) {
+		return nil, errors.New("literal pattern table has an invalid size")
+	}
+
+	var results []PatternMatch
+	bufferSize := min(uint64(chunkSize), entrySize)
+	buff := make([]byte, int(bufferSize))
+	matched := 0
+
+	for offset := uint64(0); offset < entrySize; offset += uint64(chunkSize) {
+		readSize := int(min(uint64(chunkSize), entrySize-offset))
+		window := buff[:readSize]
+		if err := readMemoryAt(reader, window, initialOffset, offset); err != nil {
+			return nil, err
+		}
+		if !canMatch {
+			continue
+		}
+		sanitizeMemory(window)
+
+		for i, b := range window {
+			for matched > 0 && b != literalPattern[matched] {
+				matched = patternTable[matched-1]
+			}
+			if b == literalPattern[matched] {
+				matched++
+			}
+			if matched != len(literalPattern) {
+				continue
+			}
+
+			matchEnd := offset + uint64(i) + 1
+			matchStart := matchEnd - uint64(len(literalPattern))
+
+			match, err := readPatternMatch(
+				reader,
+				initialOffset,
+				startAddr,
+				entrySize,
+				matchStart,
+				matchEnd,
+				context,
+				offset,
+				window,
+			)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, match)
+
+			// regexp.FindAllIndex reports non-overlapping matches.
+			matched = 0
+		}
+	}
+
+	return results, nil
+}
+
 // SearchPattern searches for a pattern in the process memory pages.
 func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters bool, context, chunkSize int) ([]PatternMatch, error) {
 	if context < 0 {
@@ -297,6 +381,8 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 	if err != nil {
 		return nil, err
 	}
+	literalPattern, literalOnly := regexPattern.LiteralPrefix()
+	var patternTable []int
 
 	var results []PatternMatch
 
@@ -319,6 +405,26 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 			initialOffset += e.GetNrPages() * uint64(mr.pageSize)
 		}
 
+		if literalOnly && len(literalPattern) > 0 {
+			if patternTable == nil && uint64(len(literalPattern)) <= entrySize {
+				patternTable = literalFailureTable(literalPattern)
+			}
+			matches, err := searchLiteralPattern(
+				f,
+				literalPattern,
+				patternTable,
+				initialOffset,
+				startAddr,
+				entrySize,
+				context,
+				chunkSize,
+			)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, matches...)
+			continue
+		}
 		for offset := uint64(0); offset < entrySize; offset += uint64(chunkSize) {
 			readSize := chunkSize
 			if entrySize-offset < uint64(chunkSize) {
