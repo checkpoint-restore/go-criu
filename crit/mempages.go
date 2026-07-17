@@ -226,6 +226,57 @@ func readMemoryAt(reader io.ReaderAt, buff []byte, initialOffset, offset uint64)
 	return err
 }
 
+type memoryRuneReader struct {
+	reader        io.ReaderAt
+	initialOffset uint64
+	entrySize     uint64
+	position      uint64
+	buffer        []byte
+	bufferStart   uint64
+	bufferEnd     uint64
+	err           error
+}
+
+func newMemoryRuneReader(reader io.ReaderAt, chunkSize int) *memoryRuneReader {
+	return &memoryRuneReader{
+		reader: reader,
+		buffer: make([]byte, chunkSize),
+	}
+}
+
+func (r *memoryRuneReader) setEntry(initialOffset, entrySize uint64) {
+	r.initialOffset = initialOffset
+	r.entrySize = entrySize
+	r.bufferStart = 0
+	r.bufferEnd = 0
+}
+
+func (r *memoryRuneReader) reset(position uint64) {
+	r.position = position
+	r.err = nil
+}
+
+func (r *memoryRuneReader) ReadRune() (rune, int, error) {
+	if r.position >= r.entrySize {
+		return 0, 0, io.EOF
+	}
+	if r.position < r.bufferStart || r.position >= r.bufferEnd {
+		readSize := min(uint64(len(r.buffer)), r.entrySize-r.position)
+		if err := readMemoryAt(r.reader, r.buffer[:int(readSize)], r.initialOffset, r.position); err != nil {
+			r.err = err
+			return 0, 0, err
+		}
+		r.bufferStart = r.position
+		r.bufferEnd = r.position + readSize
+	}
+	b := r.buffer[r.position-r.bufferStart]
+	r.position++
+	if b < 32 || b >= 127 {
+		b = '?'
+	}
+	return rune(b), 1, nil
+}
+
 func sanitizeMemory(buff []byte) {
 	for i := range buff {
 		if buff[i] < 32 || buff[i] >= 127 {

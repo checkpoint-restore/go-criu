@@ -658,6 +658,100 @@ func BenchmarkSearchLiteralPattern(b *testing.B) {
 	}
 }
 
+func TestMemoryRuneReader(t *testing.T) {
+	t.Run("buffers and sanitizes bytes", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "pages.img")
+		if err := os.WriteFile(path, []byte{'s', 'k', 'i', 'p', 'a', 'b', 0, 0xff}, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = file.Close() }()
+
+		reader := newMemoryRuneReader(file, 2)
+		reader.setEntry(4, 4)
+		var got []rune
+		for {
+			r, size, err := reader.ReadRune()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if size != 1 {
+				t.Fatalf("rune size = %d, want 1", size)
+			}
+			got = append(got, r)
+		}
+		if string(got) != "ab??" {
+			t.Fatalf("got %q, want %q", got, "ab??")
+		}
+
+		reader.reset(1)
+		r, size, err := reader.ReadRune()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r != 'b' || size != 1 {
+			t.Fatalf("got (%q, %d), want (%q, 1)", r, size, 'b')
+		}
+	})
+
+	t.Run("rejects truncated entry", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "pages.img")
+		if err := os.WriteFile(path, []byte("abc"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = file.Close() }()
+
+		reader := newMemoryRuneReader(file, 2)
+		reader.setEntry(0, 4)
+		if _, _, err := reader.ReadRune(); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := reader.ReadRune(); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := reader.ReadRune(); !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("got error %v, want %v", err, io.ErrUnexpectedEOF)
+		}
+	})
+
+	t.Run("propagates read errors", func(t *testing.T) {
+		readErr := errors.New("read failed")
+		testCases := []struct {
+			name      string
+			readerErr error
+			wantErr   error
+		}{
+			{name: "EOF", readerErr: io.EOF, wantErr: io.ErrUnexpectedEOF},
+			{name: "wrapped EOF", readerErr: fmt.Errorf("wrapped: %w", io.EOF), wantErr: io.ErrUnexpectedEOF},
+			{name: "short read", wantErr: io.ErrUnexpectedEOF},
+			{name: "other error", readerErr: readErr, wantErr: readErr},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				reader := newMemoryRuneReader(readerAtFunc(func(buff []byte, _ int64) (int, error) {
+					buff[0] = 'x'
+					return 1, tc.readerErr
+				}), 2)
+				reader.setEntry(0, 2)
+				if _, _, err := reader.ReadRune(); !errors.Is(err, tc.wantErr) {
+					t.Fatalf("got error %v, want %v", err, tc.wantErr)
+				}
+			})
+		}
+	})
+}
+
 // helper function to get the PID from the test-imgs directory
 func getTestImgPID() (uint32, error) {
 	psTreeImg, err := getImg(filepath.Join(testImgsDir, "pstree.img"), &pstree.PstreeEntry{})
