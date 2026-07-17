@@ -277,6 +277,29 @@ func (r *memoryRuneReader) ReadRune() (rune, int, error) {
 	return rune(b), 1, nil
 }
 
+type streamingRegexps struct {
+	initial      *regexp.Regexp
+	continuation *regexp.Regexp
+}
+
+func compileStreamingRegexps(pattern string) (*streamingRegexps, error) {
+	// Anchor a lazy prefix and capture the earliest match of pattern. A
+	// continuation consumes the byte preceding the next search position so
+	// boundary assertions observe the same context as they do in one buffer.
+	initial, err := regexp.Compile(`\A(?s:.*?)((?:` + pattern + `))`)
+	if err != nil {
+		return nil, err
+	}
+	continuation, err := regexp.Compile(`\A(?s:.)(?s:.*?)((?:` + pattern + `))`)
+	if err != nil {
+		return nil, err
+	}
+	return &streamingRegexps{
+		initial:      initial,
+		continuation: continuation,
+	}, nil
+}
+
 func sanitizeMemory(buff []byte) {
 	for i := range buff {
 		if buff[i] < 32 || buff[i] >= 127 {
@@ -406,6 +429,89 @@ func searchLiteralPattern(
 
 			// regexp.FindAllIndex reports non-overlapping matches.
 			matched = 0
+		}
+	}
+
+	return results, nil
+}
+
+func searchPatternStream(
+	readerAt io.ReaderAt,
+	patterns *streamingRegexps,
+	reader *memoryRuneReader,
+	initialOffset, startAddr, entrySize uint64,
+	context int,
+) ([]PatternMatch, error) {
+	var results []PatternMatch
+	searchOffset := uint64(0)
+	previousMatchEnd := uint64(0)
+	havePreviousMatch := false
+	reader.setEntry(initialOffset, entrySize)
+
+	for {
+		readerOffset := searchOffset
+		regexPattern := patterns.initial
+		if searchOffset > 0 {
+			readerOffset--
+			regexPattern = patterns.continuation
+		}
+
+		reader.reset(readerOffset)
+		indexes := regexPattern.FindReaderSubmatchIndex(reader)
+		if reader.err != nil {
+			return nil, reader.err
+		}
+		if indexes == nil {
+			break
+		}
+		if len(indexes) < 4 || indexes[2] < 0 || indexes[3] < 0 {
+			return nil, errors.New("streaming regexp did not capture its match")
+		}
+
+		matchStart := readerOffset + uint64(indexes[2])
+		matchEnd := readerOffset + uint64(indexes[3])
+		if matchStart < searchOffset || matchEnd < matchStart || matchEnd > entrySize {
+			return nil, errors.New("streaming regexp returned an invalid match range")
+		}
+
+		acceptMatch := true
+		done := false
+		if matchEnd == searchOffset {
+			// Mirror regexp.FindAllIndex: ignore an empty match immediately
+			// after the previous match and advance by one input byte.
+			if havePreviousMatch && matchStart == previousMatchEnd {
+				acceptMatch = false
+			}
+			if searchOffset == entrySize {
+				done = true
+			} else {
+				searchOffset++
+			}
+		} else {
+			searchOffset = matchEnd
+		}
+		previousMatchEnd = matchEnd
+		havePreviousMatch = true
+
+		if acceptMatch {
+			match, err := readPatternMatch(
+				readerAt,
+				initialOffset,
+				startAddr,
+				entrySize,
+				matchStart,
+				matchEnd,
+				context,
+				0,
+				nil,
+			)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, match)
+		}
+		if done {
+			break
 		}
 	}
 

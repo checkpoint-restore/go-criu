@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -748,6 +750,259 @@ func TestMemoryRuneReader(t *testing.T) {
 					t.Fatalf("got error %v, want %v", err, tc.wantErr)
 				}
 			})
+		}
+	})
+}
+
+func TestSearchPatternStream(t *testing.T) {
+	const startAddr = 0x1000
+	testCases := []struct {
+		name       string
+		memory     string
+		pattern    string
+		chunkSize  int
+		context    int
+		truncateAt int
+		wantError  error
+	}{
+		{name: "bounded", memory: "xxxxxxneedlexx", pattern: `n[e]{2}dle`, chunkSize: 8, truncateAt: -1},
+		{
+			name:       "unbounded",
+			memory:     "xxxxxxbegin" + strings.Repeat("x", 20) + "endxx",
+			pattern:    `begin.*end`,
+			chunkSize:  8,
+			context:    2,
+			truncateAt: -1,
+		},
+		{name: "multiple", memory: "begin1endxxbegin2end", pattern: `begin.*?end`, chunkSize: 4, truncateAt: -1},
+		{name: "alternation", memory: "xxabax", pattern: `(?:ab|a)`, chunkSize: 2, truncateAt: -1},
+		{name: "assertion", memory: "xxxxxx needle xx", pattern: `\bneedle\b`, chunkSize: 8, truncateAt: -1},
+		{name: "empty", memory: "axxxxxxx", pattern: `a?`, chunkSize: 1, truncateAt: -1},
+		{name: "sanitized", memory: "xxa\x00bxx", pattern: `a[?]b`, chunkSize: 2, truncateAt: -1},
+		{
+			name:       "truncated",
+			memory:     "xxxxxxxx",
+			pattern:    `missing.*pattern`,
+			chunkSize:  8,
+			truncateAt: 8,
+			wantError:  io.ErrUnexpectedEOF,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mr := newSearchPatternMemoryReader(t, tc.memory, tc.truncateAt)
+			memory := tc.memory + strings.Repeat("x", searchPatternTestPageSize-len(tc.memory))
+			file, err := os.Open(filepath.Join(mr.checkpointDir, "pages-1.img"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = file.Close() }()
+			patterns, err := compileStreamingRegexps(tc.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader := newMemoryRuneReader(file, tc.chunkSize)
+			matches, err := searchPatternStream(file, patterns, reader, 0, startAddr, searchPatternTestPageSize, tc.context)
+			if tc.wantError != nil {
+				if !errors.Is(err, tc.wantError) {
+					t.Fatalf("got error %v, want %v", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			transformed := []byte(memory)
+			for i := range transformed {
+				if transformed[i] < 32 || transformed[i] >= 127 {
+					transformed[i] = '?'
+				}
+			}
+			want := regexp.MustCompile(tc.pattern).FindAllIndex(transformed, -1)
+			if len(matches) != len(want) {
+				t.Fatalf("got %d matches, want %d", len(matches), len(want))
+			}
+			for i, index := range want {
+				contextStart := max(index[0]-tc.context, 0)
+				contextEnd := min(index[1]+tc.context, len(transformed))
+				if matches[i].Vaddr != startAddr+uint64(index[0]) {
+					t.Errorf("match %d address = %#x, want %#x", i, matches[i].Vaddr, startAddr+uint64(index[0]))
+				}
+				if matches[i].Length != index[1]-index[0] {
+					t.Errorf("match %d length = %d, want %d", i, matches[i].Length, index[1]-index[0])
+				}
+				if matches[i].Match != string(transformed[contextStart:contextEnd]) {
+					t.Errorf("match %d = %q, want %q", i, matches[i].Match, transformed[contextStart:contextEnd])
+				}
+			}
+		})
+	}
+}
+
+func runSearchPatternStream(memory []byte, pattern string, chunkSize, context int) ([]PatternMatch, error) {
+	const (
+		initialOffset = 3
+		startAddr     = 0x2000
+	)
+	backing := make([]byte, initialOffset+len(memory))
+	copy(backing, "pad")
+	copy(backing[initialOffset:], memory)
+	readerAt := bytes.NewReader(backing)
+	patterns, err := compileStreamingRegexps(pattern)
+	if err != nil {
+		return nil, err
+	}
+	reader := newMemoryRuneReader(readerAt, chunkSize)
+	return searchPatternStream(
+		readerAt,
+		patterns,
+		reader,
+		initialOffset,
+		startAddr,
+		uint64(len(memory)),
+		context,
+	)
+}
+
+func expectedSearchPatternMatches(memory []byte, pattern string, context int) []PatternMatch {
+	const startAddr = 0x2000
+	transformed := append([]byte(nil), memory...)
+	for i := range transformed {
+		if transformed[i] < 32 || transformed[i] >= 127 {
+			transformed[i] = '?'
+		}
+	}
+
+	indexes := regexp.MustCompile(pattern).FindAllIndex(transformed, -1)
+	matches := make([]PatternMatch, 0, len(indexes))
+	for _, index := range indexes {
+		contextStart := max(index[0]-context, 0)
+		contextEnd := min(index[1]+context, len(transformed))
+		matches = append(matches, PatternMatch{
+			Vaddr:   startAddr + uint64(index[0]),
+			Length:  index[1] - index[0],
+			Context: context,
+			Match:   string(transformed[contextStart:contextEnd]),
+		})
+	}
+	return matches
+}
+
+func searchPatternStreamChunkSizes(memoryLength int, matches []PatternMatch) []int {
+	candidates := []int{1, 2, memoryLength + 1}
+	for _, match := range matches {
+		if match.Length > 1 {
+			candidates = append(candidates, match.Length-1)
+		}
+		if match.Length > 0 {
+			candidates = append(candidates, match.Length, match.Length+1)
+		}
+	}
+
+	seen := make(map[int]struct{}, len(candidates))
+	chunkSizes := make([]int, 0, len(candidates))
+	for _, chunkSize := range candidates {
+		if chunkSize <= 0 {
+			continue
+		}
+		if _, ok := seen[chunkSize]; ok {
+			continue
+		}
+		seen[chunkSize] = struct{}{}
+		chunkSizes = append(chunkSizes, chunkSize)
+	}
+	return chunkSizes
+}
+
+func TestSearchPatternStreamDifferential(t *testing.T) {
+	testCases := []struct {
+		name    string
+		memory  []byte
+		pattern string
+		context int
+	}{
+		{name: "start anchor", memory: []byte("abc"), pattern: `^a`, context: 1},
+		{name: "end anchor", memory: []byte("abc"), pattern: `c$`, context: 1},
+		{name: "absolute start", memory: []byte("abc"), pattern: `\Aa`},
+		{name: "absolute end", memory: []byte("abc"), pattern: `c\z`},
+		{name: "continuation start anchor", memory: []byte("ab"), pattern: `a|^b`},
+		{name: "continuation absolute start", memory: []byte("ab"), pattern: `a|\Ab`},
+		{name: "continuation word boundary", memory: []byte("ab"), pattern: `a|\bb`},
+		{name: "continuation non-word boundary", memory: []byte("ab"), pattern: `a|\Bb`},
+		{name: "continuation end anchor", memory: []byte("ab"), pattern: `a|b$`},
+		{name: "continuation absolute end", memory: []byte("ab"), pattern: `a|b\z`},
+		{name: "word boundaries", memory: []byte(" a "), pattern: `\ba\b`},
+		{name: "shared prefix long first", memory: []byte("ab"), pattern: `(?:ab|a)`},
+		{name: "shared prefix short first", memory: []byte("ab"), pattern: `(?:a|ab)`},
+		{name: "greedy", memory: []byte("a1b2b"), pattern: `a.*b`},
+		{name: "non-greedy", memory: []byte("a1b2b"), pattern: `a.*?b`},
+		{name: "captures", memory: []byte("xxabbx"), pattern: `(a(b)?)`, context: 1},
+		{name: "named capture", memory: []byte("xxaaax"), pattern: `(?P<word>a+)`},
+		{name: "inline flags", memory: []byte("xxAaax"), pattern: `(?i:a+)`},
+		{name: "empty repetition", memory: []byte("baa"), pattern: `a*`},
+		{name: "empty expression", memory: []byte("ab"), pattern: `(?:)`},
+		{name: "empty record", pattern: `(?:)`},
+		{name: "empty record start", pattern: `^`},
+		{name: "empty record end", pattern: `$`},
+		{name: "no match", memory: []byte("abc"), pattern: `z+`},
+		{name: "sanitized NUL", memory: []byte{'a', 0, 'b'}, pattern: `a[?]b`, context: 2},
+		{name: "sanitized invalid UTF-8", memory: []byte{0xff, 'a'}, pattern: `[?]a`},
+		{name: "sanitized non-ASCII", memory: []byte("é"), pattern: `[?]+`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			want := expectedSearchPatternMatches(tc.memory, tc.pattern, tc.context)
+			for _, chunkSize := range searchPatternStreamChunkSizes(len(tc.memory), want) {
+				t.Run(fmt.Sprintf("chunk_%d", chunkSize), func(t *testing.T) {
+					got, err := runSearchPatternStream(tc.memory, tc.pattern, chunkSize, tc.context)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !slices.Equal(got, want) {
+						t.Fatalf("memory %q pattern %q: got %#v, want %#v", tc.memory, tc.pattern, got, want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func FuzzSearchPatternStream(f *testing.F) {
+	patterns := []string{
+		`a+`, `a*`, `(?:)`, `^`, `$`, `\Aa`, `a\z`, `\ba\b`, `\B`,
+		`a.*b`, `a.*?b`, `(?:ab|a)`, `(?:a|ab)`, `(a(b)?)`,
+		`(?P<word>a+)`, `(?i:a+)`, `[?]{1,4}`,
+	}
+	for i := range patterns {
+		f.Add([]byte("ab\x00é"), uint8(i), uint8(i+1), uint8(i))
+	}
+
+	f.Fuzz(func(t *testing.T, memory []byte, patternIndex, chunkSeed, contextSeed uint8) {
+		if len(memory) > 256 {
+			memory = memory[:256]
+		}
+		pattern := patterns[int(patternIndex)%len(patterns)]
+		chunkSize := int(chunkSeed%32) + 1
+		context := int(contextSeed % 33)
+
+		got, err := runSearchPatternStream(memory, pattern, chunkSize, context)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := expectedSearchPatternMatches(memory, pattern, context)
+		if !slices.Equal(got, want) {
+			t.Fatalf(
+				"memory %q pattern %q chunk %d context %d: got %#v, want %#v",
+				memory,
+				pattern,
+				chunkSize,
+				context,
+				got,
+				want,
+			)
 		}
 	})
 }
