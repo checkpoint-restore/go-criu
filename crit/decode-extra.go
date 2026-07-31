@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"io"
+	"math"
 	"os"
 
 	bpfmap_data "github.com/checkpoint-restore/go-criu/v8/crit/images/bpfmap-data"
@@ -32,14 +32,13 @@ func decodePipesData(
 	extraSize := p.GetBytes()
 
 	if noPayload {
-		_, err := f.Seek(int64(extraSize), 1)
-		if err != nil {
+		if err := skipExactBytes(f, uint64(extraSize)); err != nil {
 			return "", err
 		}
 		return countBytes(int64(extraSize)), nil
 	}
-	extraBuf := make([]byte, extraSize)
-	if _, err := f.Read(extraBuf); err != nil {
+	extraBuf, err := readExactBytes(f, uint64(extraSize))
+	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
@@ -58,14 +57,13 @@ func decodeSkQueues(
 	extraSize := p.GetLength()
 
 	if noPayload {
-		_, err := f.Seek(int64(extraSize), 1)
-		if err != nil {
+		if err := skipExactBytes(f, uint64(extraSize)); err != nil {
 			return "", err
 		}
 		return countBytes(int64(extraSize)), nil
 	}
-	extraBuf := make([]byte, extraSize)
-	if _, err := f.Read(extraBuf); err != nil {
+	extraBuf, err := readExactBytes(f, uint64(extraSize))
+	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
@@ -74,6 +72,29 @@ func decodeSkQueues(
 type tcpStreamExtra struct {
 	InQ  string `json:"in_q"`
 	OutQ string `json:"out_q"`
+}
+
+func extraPayloadDecoderForMagic(
+	magic string,
+) (proto.Message, decodeExtraFunc, bool) {
+	switch magic {
+	case "PIPES_DATA", "FIFO_DATA":
+		return &pipe_data.PipeDataEntry{}, decodePipesData, true
+	case "SK_QUEUES":
+		return &sk_packet.SkPacketEntry{}, decodeSkQueues, true
+	case "TCP_STREAM":
+		return &tcp_stream.TcpStreamEntry{}, decodeTCPStream, true
+	case "BPFMAP_DATA":
+		return &bpfmap_data.BpfmapDataEntry{}, decodeBpfmapData, true
+	case "IPCNS_SEM":
+		return &ipc_sem.IpcSemEntry{}, decodeIpcSem, true
+	case "IPCNS_SHM":
+		return &ipc_shm.IpcShmEntry{}, decodeIpcShm, true
+	case "IPCNS_MSG":
+		return &ipc_msg.IpcMsgEntry{}, decodeIpcMsg, true
+	default:
+		return nil, nil, false
+	}
 }
 
 // Extra data handler for TCP streams
@@ -88,23 +109,23 @@ func decodeTCPStream(
 	}
 	inQLen := p.GetInqLen()
 	outQLen := p.GetOutqLen()
+	extraSize := uint64(inQLen) + uint64(outQLen)
 
 	if noPayload {
-		_, err := f.Seek(0, 2)
-		if err != nil {
+		if err := skipExactBytes(f, extraSize); err != nil {
 			return "", err
 		}
-		return countBytes(int64(inQLen + outQLen)), nil
+		return countBytes(int64(extraSize)), nil
 	}
 
 	extra := tcpStreamExtra{}
-	extraBuf := make([]byte, inQLen)
-	if _, err := f.Read(extraBuf); err != nil {
+	extraBuf, err := readExactBytes(f, uint64(inQLen))
+	if err != nil {
 		return "", err
 	}
 	extra.InQ = base64.StdEncoding.EncodeToString(extraBuf)
-	extraBuf = make([]byte, outQLen)
-	if _, err := f.Read(extraBuf); err != nil {
+	extraBuf, err = readExactBytes(f, uint64(outQLen))
+	if err != nil {
 		return "", err
 	}
 	extra.OutQ = base64.StdEncoding.EncodeToString(extraBuf)
@@ -123,17 +144,16 @@ func decodeBpfmapData(
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
-	extraSize := p.GetKeysBytes() + p.GetValuesBytes()
+	extraSize := uint64(p.GetKeysBytes()) + uint64(p.GetValuesBytes())
 
 	if noPayload {
-		_, err := f.Seek(int64(extraSize), 1)
-		if err != nil {
+		if err := skipExactBytes(f, extraSize); err != nil {
 			return "", err
 		}
 		return countBytes(int64(extraSize)), nil
 	}
-	extraBuf := make([]byte, extraSize)
-	if _, err := f.Read(extraBuf); err != nil {
+	extraBuf, err := readExactBytes(f, extraSize)
+	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
@@ -150,28 +170,29 @@ func decodeIpcSem(
 		return "", errors.New("unable to assert payload type")
 	}
 	// Each semaphore is 16-bit
-	extraSize := int64(p.GetNsems()) * 2
+	extraSize := uint64(p.GetNsems()) * 2
 	// Round off to nearest 64-bit multiple
-	roundedSize := (extraSize/8 + 1) * 8
+	roundedSize, err := alignPayloadSize(extraSize, 8)
+	if err != nil {
+		return "", err
+	}
 
 	if noPayload {
-		_, err := f.Seek(roundedSize, 1)
-		if err != nil {
+		if err := skipExactBytes(f, roundedSize); err != nil {
 			return "", err
 		}
-		return countBytes(extraSize), nil
+		return countBytes(int64(extraSize)), nil
 	}
-	extraPayload := []uint16{}
-	for i := 0; i < int(extraSize/2); i++ {
-		// Create 16-bit buffer
-		extraBuf := make([]byte, 2)
-		if _, err := f.Read(extraBuf); err != nil {
-			return "", err
-		}
-		extraPayload = append(extraPayload, binary.LittleEndian.Uint16(extraBuf))
-	}
-	_, err := f.Seek(roundedSize-extraSize, 1)
+	extraBuf, err := readExactBytes(f, extraSize)
 	if err != nil {
+		return "", err
+	}
+	extraPayload := make([]uint16, p.GetNsems())
+	for i := range extraPayload {
+		offset := i * 2
+		extraPayload[i] = binary.LittleEndian.Uint16(extraBuf[offset : offset+2])
+	}
+	if err := skipExactBytes(f, roundedSize-extraSize); err != nil {
 		return "", err
 	}
 	extraJSON, err := json.Marshal(extraPayload)
@@ -188,23 +209,24 @@ func decodeIpcShm(
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
-	extraSize := int64(p.GetSize())
+	extraSize := p.GetSize()
 	// Round off to nearest 32-bit multiple
-	roundedSize := (extraSize/4 + 1) * 4
-
-	if noPayload {
-		_, err := f.Seek(roundedSize, 1)
-		if err != nil {
-			return "", err
-		}
-		return countBytes(extraSize), nil
-	}
-	extraBuf := make([]byte, extraSize)
-	if _, err := f.Read(extraBuf); err != nil {
+	roundedSize, err := alignPayloadSize(extraSize, 4)
+	if err != nil {
 		return "", err
 	}
-	_, err := f.Seek(roundedSize-extraSize, 1)
+
+	if noPayload {
+		if err := skipExactBytes(f, roundedSize); err != nil {
+			return "", err
+		}
+		return countBytes(int64(extraSize)), nil
+	}
+	extraBuf, err := readExactBytes(f, extraSize)
 	if err != nil {
+		return "", err
+	}
+	if err := skipExactBytes(f, roundedSize-extraSize); err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(extraBuf), nil
@@ -220,40 +242,40 @@ func decodeIpcMsg(
 	if !ok {
 		return "", errors.New("unable to assert payload type")
 	}
-	msgQNum := int64(p.GetQnum())
-	sizeBuf := make([]byte, 4)
 	// Store payload size if noPayload is true
-	var totalSize int64 = 0
+	var totalSize uint64
 	// Store messages as string slice
 	extraPayload := []string{}
 
-	for i := 0; i < int(msgQNum); i++ {
-		n, err := f.Read(sizeBuf)
-		if n == 0 {
-			if errors.Is(err, io.EOF) {
-				break
-			}
+	for i := uint32(0); i < p.GetQnum(); i++ {
+		sizeBuf, err := readExactBytes(f, 4)
+		if err != nil {
 			return "", err
 		}
 		extraSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
-		msgBuf := make([]byte, extraSize)
-		if _, err = f.Read(msgBuf); err != nil {
+		msgBuf, err := readExactBytes(f, extraSize)
+		if err != nil {
 			return "", err
 		}
 		msg := &ipc_msg.IpcMsg{}
 		if err = proto.Unmarshal(msgBuf, msg); err != nil {
 			return "", err
 		}
-		msgSize := int64(msg.GetMsize())
+		msgSize := uint64(msg.GetMsize())
 		// Round off to nearest 64-bit multiple
-		roundedMsgSize := (msgSize/8 + 1) * 8
+		roundedMsgSize, err := alignPayloadSize(msgSize, 8)
+		if err != nil {
+			return "", err
+		}
 
 		if noPayload {
-			_, err = f.Seek(roundedMsgSize, 1)
-			if err != nil {
+			if err = skipExactBytes(f, roundedMsgSize); err != nil {
 				return "", err
 			}
-			totalSize += int64(extraSize) + msgSize
+			if totalSize > math.MaxUint64-extraSize-msgSize {
+				return "", errors.New("IPC message payload size overflows")
+			}
+			totalSize += extraSize + msgSize
 		} else {
 			jsonMsg, err := protojson.Marshal(msg)
 			if err != nil {
@@ -261,21 +283,23 @@ func decodeIpcMsg(
 			}
 			extraPayload = append(extraPayload, string(jsonMsg))
 
-			msgDataBuf := make([]byte, msgSize)
-			if _, err = f.Read(msgDataBuf); err != nil {
-				return "", err
+			msgDataBuf, readErr := readExactBytes(f, msgSize)
+			if readErr != nil {
+				return "", readErr
 			}
 			msgData := base64.StdEncoding.EncodeToString(msgDataBuf)
 			extraPayload = append(extraPayload, msgData)
-			_, err = f.Seek(roundedMsgSize-msgSize, 1)
-			if err != nil {
+			if err = skipExactBytes(f, roundedMsgSize-msgSize); err != nil {
 				return "", err
 			}
 		}
 	}
 
 	if noPayload {
-		return countBytes(totalSize), nil
+		if totalSize > math.MaxInt64 {
+			return "", errors.New("IPC message payload size exceeds reporting range")
+		}
+		return countBytes(int64(totalSize)), nil
 	}
 	extraJSON, err := json.Marshal(extraPayload)
 	if err != nil {

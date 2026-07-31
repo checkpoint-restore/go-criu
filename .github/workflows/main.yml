@@ -29,9 +29,9 @@ jobs:
     - name: Build CRIU ${{ matrix.criu-branch }}
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libnet-dev libcap-dev uuid-dev curl unzip
         git clone --depth=1 --single-branch -b ${{ matrix.criu-branch }} https://github.com/checkpoint-restore/criu.git
+        sudo ./criu/contrib/dependencies/apt-packages.sh
+        sudo ./criu/contrib/apt-install curl unzip bats
         make -j"$(nproc)" -C criu
         sudo make -C criu install-criu PREFIX=/usr
 
@@ -60,7 +60,6 @@ jobs:
           make -C crit clean bin/crit
           exit 0
         fi
-        sudo apt-get install -y bats
         GO_BIN="$(command -v go)"
         if [ "${{ matrix.criu-branch }}" = "criu-dev" ]; then
           # First update protobuf. It is too old in the Ubuntu image.
@@ -76,3 +75,12 @@ jobs:
         fi
         sudo -E make GO="$GO_BIN" GOFLAGS="" -C crit unit-test
         sudo -E make GO="$GO_BIN" -C test crit-test
+
+    - name: Test checkpoint compression commands
+      if: runner.os == 'Linux' && matrix.criu-branch == 'criu-dev'
+      run: |
+        sudo -E make -C test/crit \
+          GO="$(command -v go)" \
+          CRIU_TREE="$PWD/criu" \
+          CRIU_BIN="$PWD/criu/criu/criu" \
+          compression-test
