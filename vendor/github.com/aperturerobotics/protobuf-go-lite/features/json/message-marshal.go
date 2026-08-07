@@ -157,8 +157,13 @@ nextField:
 		} else {
 			// If we're not in a oneof, start "if not zero value".
 			if nilable {
-				// If this field is nullable, we emit it if it's not nil or if it's specified in the field mask.
-				g.P("if ", messageOrOneofIdent, ".", fieldGoName, ` != nil || s.HasField("`, fieldJsonName, `") {`)
+				switch field.Desc.Kind() {
+				case protoreflect.MessageKind, protoreflect.GroupKind:
+					g.P("if ", messageOrOneofIdent, ".", fieldGoName, ` != nil || s.HasField("`, fieldJsonName, `") {`)
+				default:
+					// A field mask must not fabricate presence for an optional scalar.
+					g.P("if ", messageOrOneofIdent, ".", fieldGoName, " != nil {")
+				}
 			} else {
 				// If this field is not nullable, we emit it if it's not the zero value or if it's specified in the field mask.
 				switch field.Desc.Kind() {
