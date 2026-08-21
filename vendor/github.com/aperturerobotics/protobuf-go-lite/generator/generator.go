@@ -61,6 +61,8 @@ type Config struct {
 	WellKnownTypes  bool
 	AllowEmpty      bool
 	BuildTag        string
+	// Registry generates init-time message constructor and option registration.
+	Registry bool
 }
 
 type CodegenMode string
@@ -106,6 +108,11 @@ func NewGenerator(plugin *protogen.Plugin, featureNames []string, cfg *Config) (
 	if err != nil {
 		return nil, err
 	}
+	if cfg != nil && cfg.Registry {
+		if err := validateRegistryFeatures(featureNames); err != nil {
+			return nil, err
+		}
+	}
 
 	local := make(map[protoreflect.FullName]bool)
 	for _, f := range plugin.Files {
@@ -148,6 +155,10 @@ func (gen *Generator) Generate() {
 
 		// Generate vtproto features
 		gen.generateFile(p, file)
+
+		if gen.cfg.Registry {
+			gen.generateRegistry(p, file)
+		}
 	}
 }
 

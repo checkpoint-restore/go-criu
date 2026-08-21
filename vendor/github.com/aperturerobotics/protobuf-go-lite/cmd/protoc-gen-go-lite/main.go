@@ -44,6 +44,7 @@ func main() {
 	f.StringVar(&codegenMode, "codegen", string(generator.CodegenModeHelper), "code generation mode: helper or unrolled")
 	f.StringVar(&features, "features", "all", "list of features to generate (separated by '+')")
 	f.StringVar(&cfg.BuildTag, "buildTag", "", "the go:build tag to set on generated files")
+	f.BoolVar(&cfg.Registry, "registry", false, "generate init-time message registry with flattened custom options")
 
 	protogen.Options{
 		ParamFunc: f.Set,
@@ -51,7 +52,8 @@ func main() {
 		if err := cfg.SetCodegenMode(codegenMode); err != nil {
 			return err
 		}
-		gen, err := generator.NewGenerator(plugin, strings.Split(features, "+"), &cfg)
+		featureNames := strings.Split(features, "+")
+		gen, err := generator.NewGenerator(plugin, featureNames, &cfg)
 		if err != nil {
 			return err
 		}

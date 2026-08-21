@@ -86,6 +86,9 @@ Summary of the packages provided by this module:
 *   [`cmd/protoc-gen-go-lite`](https://pkg.go.dev/github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite):
     The `protoc-gen-go-lite` binary is a protoc plugin to generate a Go protocol
     buffer package.
+*   [`registry`](https://pkg.go.dev/github.com/aperturerobotics/protobuf-go-lite/registry):
+    Package `registry` indexes generated message constructors and custom
+    message options without runtime reflection.
 
 ## Usage
 
@@ -125,6 +128,37 @@ Check out the [template](https://github.com/aperturerobotics/template) for a qui
 Both modes are selected at generation time and produce normal Go packages for
 callers. They do not add a reflection registry, descriptor builder, struct tag
 interpreter, or runtime type-metadata dependency to generated fast paths.
+
+### Opt-in message registry
+
+Generated packages do not register message types by default. Add `registry=true`
+to `--go-lite_opt` when an application must discover linked message types at
+runtime:
+
+```
+protoc --go-lite_out=. --go-lite_opt=features=all,registry=true example.proto
+```
+
+The registry requires the `size`, `marshal`, and `unmarshal` features. Each
+generated package registers constructors by fully qualified protobuf name and
+`google.protobuf.Any` type URL during package initialization. The generator
+also flattens custom message options into fully qualified scalar paths:
+
+```go
+registry.Range(func(entry registry.Entry) bool {
+	tenant, tenantOK := entry.Option("annotations.msg_opts.tenant")
+	table, tableOK := entry.Option("annotations.msg_opts.table")
+	if tenantOK && tableOK {
+		messagesByKey[tenant+"."+table] = entry
+	}
+	return true
+})
+```
+
+Repeated option values retain declaration order. Message-valued options use
+dot-separated field paths, and enum values use their protobuf names. The
+registry copies option metadata on registration and returns sorted snapshots to
+callers.
 
 ### Generated output
 
