@@ -3,7 +3,6 @@ package crit
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/checkpoint-restore/go-criu/v8/crit/images/fdinfo"
 	ghost_file "github.com/checkpoint-restore/go-criu/v8/crit/images/ghost-file"
@@ -61,9 +60,14 @@ func (c *CriuEntry) MarshalJSON() ([]byte, error) {
 }
 
 func appendExtraJSON(data []byte, extra string) ([]byte, error) {
-	extraString := fmt.Sprint(`"extra":"`, extra, `"}`)
+	extraJSON, err := json.Marshal(extra)
+	if err != nil {
+		return nil, err
+	}
 	data[len(data)-1] = byte(',')
-	data = append(data, []byte(extraString)...)
+	data = append(data, []byte(`"extra":`)...)
+	data = append(data, extraJSON...)
+	data = append(data, '}')
 	return data, nil
 }
 
@@ -102,18 +106,25 @@ func (img *CriuImage) UnmarshalJSON(data []byte) error {
 }
 
 // Helper to separate proto data and extra data
-func splitJSONData(data []byte) ([]byte, string) {
-	extraPayload := ""
-	dataString := string(data)
-	dataItems := strings.Split(dataString, ",")
-	// Handle extra data, if present
-	last := strings.Split(dataItems[len(dataItems)-1], ":")
-	if last[0] == `"extra"` {
-		extra := last[1]
-		extraPayload = extra[1 : len(extra)-2]
-		dataString = strings.Join(dataItems[:len(dataItems)-1], ",") + "}"
+func splitJSONData(data []byte) ([]byte, string, error) {
+	fields := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, "", err
 	}
-	return []byte(dataString), extraPayload
+	extraJSON, ok := fields["extra"]
+	if !ok {
+		return data, "", nil
+	}
+	var extra string
+	if err := json.Unmarshal(extraJSON, &extra); err != nil {
+		return nil, "", fmt.Errorf("invalid extra payload: %w", err)
+	}
+	delete(fields, "extra")
+	payload, err := json.Marshal(fields)
+	if err != nil {
+		return nil, "", err
+	}
+	return payload, extra, nil
 }
 
 // unmarshalDefault is used for all JSON data
@@ -122,7 +133,10 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 	for _, data := range imgData.JSONEntries {
 		// Create proto struct to hold payload
 		payload := proto.Clone(img.EntryType)
-		jsonPayload, extraPayload := splitJSONData(data)
+		jsonPayload, extraPayload, err := splitJSONData(data)
+		if err != nil {
+			return err
+		}
 		if img.Magic == "FILES" {
 			var err error
 			jsonPayload, err = normalizeFileEntryJSON(jsonPayload)
@@ -145,14 +159,20 @@ func unmarshalDefault(imgData *jsonImage, img *CriuImage) error {
 
 // Special handler for ghost image
 func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
+	if len(imgData.JSONEntries) == 0 {
+		return fmt.Errorf("ghost image has no primary entry")
+	}
 	// Process primary entry
-	entry := CriuEntry{Message: &ghost_file.GhostFileEntry{}}
-	jsonPayload, extraPayload := splitJSONData(imgData.JSONEntries[0])
+	entry := &CriuEntry{Message: &ghost_file.GhostFileEntry{}}
+	jsonPayload, extraPayload, err := splitJSONData(imgData.JSONEntries[0])
+	if err != nil {
+		return err
+	}
 	if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 		return err
 	}
 	entry.Extra = extraPayload
-	img.Entries = append(img.Entries, &entry)
+	img.Entries = append(img.Entries, entry)
 	// If there is only one JSON entry,
 	// then no ghost chunks are present
 	if len(imgData.JSONEntries) == 1 {
@@ -161,13 +181,16 @@ func unmarshalGhostFile(imgData *jsonImage, img *CriuImage) error {
 
 	// Process chunks
 	for _, data := range imgData.JSONEntries[1:] {
-		entry = CriuEntry{Message: &ghost_file.GhostChunkEntry{}}
-		jsonPayload, extraPayload = splitJSONData(data)
+		entry := &CriuEntry{Message: &ghost_file.GhostChunkEntry{}}
+		jsonPayload, extraPayload, err = splitJSONData(data)
+		if err != nil {
+			return err
+		}
 		if err := protojson.Unmarshal(jsonPayload, entry.Message); err != nil {
 			return err
 		}
 		entry.Extra = extraPayload
-		img.Entries = append(img.Entries, &entry)
+		img.Entries = append(img.Entries, entry)
 	}
 
 	return nil

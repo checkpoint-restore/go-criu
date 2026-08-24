@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/netip"
 	"os"
@@ -18,18 +19,86 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const maxImmediateImageAllocation uint64 = 64 * 1024
+
+func ensureRemainingBytes(f *os.File, size uint64) error {
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+	offset, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+	if offset < 0 || info.Size() < offset || size > uint64(info.Size()-offset) {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func readExactBytes(f *os.File, size uint64) ([]byte, error) {
+	if size > uint64(math.MaxInt) {
+		return nil, fmt.Errorf("payload size %d exceeds the supported allocation size", size)
+	}
+	if size > maxImmediateImageAllocation {
+		if err := ensureRemainingBytes(f, size); err != nil {
+			return nil, err
+		}
+	}
+	buffer := make([]byte, int(size))
+	if _, err := io.ReadFull(f, buffer); err != nil {
+		return nil, err
+	}
+	return buffer, nil
+}
+
+func skipExactBytes(f *os.File, size uint64) error {
+	if size > math.MaxInt64 {
+		return fmt.Errorf("payload size %d exceeds the supported file offset", size)
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		_, err = io.CopyN(io.Discard, f, int64(size))
+		return err
+	}
+	nextOffset, err := f.Seek(int64(size), io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+	if nextOffset < 0 || nextOffset > info.Size() {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func alignPayloadSize(size, alignment uint64) (uint64, error) {
+	if alignment == 0 || alignment&(alignment-1) != 0 {
+		return 0, fmt.Errorf("invalid payload alignment %d", alignment)
+	}
+	if size > math.MaxUint64-(alignment-1) {
+		return 0, fmt.Errorf("payload size %d overflows alignment %d", size, alignment)
+	}
+	return (size + alignment - 1) &^ (alignment - 1), nil
+}
+
 // Helper to decode magic name from hex value
 func ReadMagic(f *os.File) (string, error) {
 	magicMap := magic.LoadMagic()
 	// Read magic
 	magicBuf := make([]byte, 4)
-	if _, err := f.Read(magicBuf); err != nil {
+	if _, err := io.ReadFull(f, magicBuf); err != nil {
 		return "", err
 	}
 	magicValue := uint64(binary.LittleEndian.Uint32(magicBuf))
 	if magicValue == magicMap.ByName["IMG_COMMON"] ||
 		magicValue == magicMap.ByName["IMG_SERVICE"] {
-		if _, err := f.Read(magicBuf); err != nil {
+		if _, err := io.ReadFull(f, magicBuf); err != nil {
 			return "", err
 		}
 		magicValue = uint64(binary.LittleEndian.Uint32(magicBuf))
@@ -69,21 +138,35 @@ func countImg(f *os.File) (*CriuImage, error) {
 	}
 
 	count := 0
-	sizeBuf := make([]byte, 4)
-	// Read payload size and increment counter until EOF
-	for {
-		if n, err := f.Read(sizeBuf); err != nil {
-			if n == 0 && err == io.EOF {
-				break
+	if img.Magic == "GHOST_FILE" {
+		if err := walkGhostFileEntries(f, true, func(*CriuEntry) {
+			count++
+		}); err != nil {
+			return nil, err
+		}
+	} else if entryType, decodeExtra, ok := extraPayloadDecoderForMagic(img.Magic); ok {
+		if err := walkDefaultEntries(f, entryType, decodeExtra, true, func(*CriuEntry) {
+			count++
+		}); err != nil {
+			return nil, err
+		}
+	} else {
+		sizeBuf := make([]byte, 4)
+		// Read payload size and increment counter until EOF.
+		for {
+			if _, err := io.ReadFull(f, sizeBuf); err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, err
 			}
-			return nil, err
-		}
 
-		payloadSize := int64(binary.LittleEndian.Uint32(sizeBuf))
-		if _, err = f.Seek(payloadSize, 1); err != nil {
-			return nil, err
+			payloadSize := uint64(binary.LittleEndian.Uint32(sizeBuf))
+			if err = skipExactBytes(f, payloadSize); err != nil {
+				return nil, err
+			}
+			count++
 		}
-		count++
 	}
 	// Decrement counter by 1 for pagemap file,
 	// as pagemap head is not a top-level entry

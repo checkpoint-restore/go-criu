@@ -12,6 +12,41 @@ message pagemap_entry {
 	required uint64 vaddr		= 1 [(criu).hex = true];
 	required uint32 compat_nr_pages	= 2;
 	optional bool	in_parent	= 3;
+	/*
+	 * PE_PAYLOAD_ALIGNED means that payload bytes for this present entry
+	 * begin at the next host-page boundary in pages-*.img. Readers must skip
+	 * the padding before applying block_sizes[] or the ordinary raw size.
+	 */
 	optional uint32	flags		= 4 [(criu).flags = "pmap.flags" ];
-	optional uint64 nr_pages = 5;
+	optional uint64 nr_pages	= 5;
+	optional pagemap_blocks blocks = 6;
+}
+
+message pagemap_blocks {
+	/*
+	 * Size in bytes of each stored block in the pages image.
+	 * One element per compressed block (of pages_per_block pages).
+	 * Special values:
+	 *   0 = all-zero block, no payload is stored in the image.
+	 *   N = stored raw (incompressible), where N is uncompressed block size:
+	 *       pages_per_block * PAGE_SIZE (the last block of an entry may
+	 *       hold fewer than pages_per_block pages).
+	 * Any other value is the length of the compressed payload.
+	 *
+	 * Packed encoding avoids one protobuf tag per memory page.
+	 */
+	repeated uint32 block_sizes	= 1 [packed = true];
+	/*
+	 * Total payload bytes this entry occupies in the pages image
+	 * (sum of all block_sizes[]). On restore it is an O(1) shortcut to
+	 * advance the read offset past a whole entry (see skip_pagemap_pages())
+	 * instead of summing block_sizes[] block by block. Offsets into the
+	 * interior of an entry are still derived by walking block_sizes[], since
+	 * a single total cannot locate an individual page.
+	 */
+	required uint64	total_payload_size = 2;
+	/*
+	 * Number of memory pages in each compressed block (block granularity).
+	 */
+	required uint32 pages_per_block = 3;
 }

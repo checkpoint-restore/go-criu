@@ -25,6 +25,7 @@ type MemoryReader struct {
 	pagesID        uint32
 	pageSize       int
 	pagemapEntries []*pagemap.PagemapEntry
+	layer          *memoryLayer
 }
 
 func (mr *MemoryReader) GetPagesID() uint32 {
@@ -38,29 +39,23 @@ func NewMemoryReader(checkpointDir string, pid uint32, pageSize int) (*MemoryRea
 	}
 
 	// Check if the given page size is a positive power of 2, otherwise return an error
-	if (pageSize & (pageSize - 1)) != 0 {
+	if pageSize <= 0 || (pageSize&(pageSize-1)) != 0 {
 		return nil, errors.New("page size should be a positive power of 2")
 	}
 
-	pagemapImg, err := getImg(filepath.Join(checkpointDir, fmt.Sprintf("pagemap-%d.img", pid)), &pagemap.PagemapHead{})
+	pagemapName := fmt.Sprintf("pagemap-%d.img", pid)
+	layer, err := loadMemoryLayer(checkpointDir, pagemapName, pageSize)
 	if err != nil {
 		return nil, err
-	}
-
-	pagesID := pagemapImg.Entries[0].Message.(*pagemap.PagemapHead).GetPagesId()
-
-	pagemapEntries := make([]*pagemap.PagemapEntry, 0)
-
-	for _, entry := range pagemapImg.Entries[1:] {
-		pagemapEntries = append(pagemapEntries, entry.Message.(*pagemap.PagemapEntry))
 	}
 
 	return &MemoryReader{
 		checkpointDir:  checkpointDir,
 		pid:            pid,
 		pageSize:       pageSize,
-		pagesID:        pagesID,
-		pagemapEntries: pagemapEntries,
+		pagesID:        layer.pagesID,
+		pagemapEntries: layer.pagemapEntries,
+		layer:          layer,
 	}, nil
 }
 
@@ -69,87 +64,19 @@ func NewMemoryReader(checkpointDir string, pid uint32, pageSize int) (*MemoryRea
 // It retrieves the memory content within the
 // specified range defined by the start and end addresses.
 func (mr *MemoryReader) GetMemPages(start, end uint64) (*bytes.Buffer, error) {
-	size := end - start
-
-	startPage := start / uint64(mr.pageSize)
-	endPage := end / uint64(mr.pageSize)
-
-	var buffer bytes.Buffer
-
-	for pageNumber := startPage; pageNumber <= endPage; pageNumber++ {
-		var page []byte = nil
-
-		pageMem, err := mr.getPage(pageNumber)
-		if err != nil {
-			return nil, err
-		}
-
-		if pageMem != nil {
-			page = pageMem
-		} else {
-			page = bytes.Repeat([]byte("\x00"), mr.pageSize)
-		}
-
-		var nSkip, nRead uint64
-
-		switch pageNumber {
-		case startPage:
-			nSkip = start - pageNumber*uint64(mr.pageSize)
-			if startPage == endPage {
-				nRead = size
-			} else {
-				nRead = uint64(mr.pageSize) - nSkip
-			}
-		case endPage:
-			nSkip = 0
-			nRead = end - pageNumber*uint64(mr.pageSize)
-		default:
-			nSkip = 0
-			nRead = uint64(mr.pageSize)
-		}
-
-		if _, err := buffer.Write(page[nSkip : nSkip+nRead]); err != nil {
-			return nil, err
-		}
+	if end < start {
+		return nil, fmt.Errorf("memory range end %#x precedes start %#x", end, start)
+	}
+	if end == start {
+		return &bytes.Buffer{}, nil
 	}
 
-	return &buffer, nil
-}
-
-// getPage retrieves a memory page from the pages.img file.
-func (mr *MemoryReader) getPage(pageNo uint64) ([]byte, error) {
-	var offset uint64 = 0
-
-	// Iterate over pagemap entries to find the corresponding page
-	for _, m := range mr.pagemapEntries {
-		found := false
-		for i := 0; i < int(m.GetNrPages()); i++ {
-			if m.GetVaddr()+uint64(i)*uint64(mr.pageSize) == pageNo*uint64(mr.pageSize) {
-				found = true
-				break
-			}
-			offset += uint64(mr.pageSize)
-		}
-
-		if !found {
-			continue
-		}
-		f, err := os.Open(filepath.Join(mr.checkpointDir, fmt.Sprintf("pages-%d.img", mr.pagesID)))
-		if err != nil {
-			return nil, err
-		}
-
-		defer func() { _ = f.Close() }()
-
-		buff := make([]byte, mr.pageSize)
-
-		if _, err := f.ReadAt(buff, int64(offset)); err != nil {
-			return nil, err
-		}
-
-		return buff, nil
+	session, err := mr.newReadSession()
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	defer func() { _ = session.close() }()
+	return mr.readMemRange(session, start, end)
 }
 
 // GetPsArgs retrieves process arguments from memory pages
@@ -203,6 +130,44 @@ type PatternMatch struct {
 	Length  int
 	Context int
 	Match   string
+}
+
+// memoryEntryReaderAt exposes one decoded pagemap entry as an io.ReaderAt.
+// The backing session resolves raw, zero, compressed, and parent-backed pages;
+// callers therefore see logical memory rather than the packed pages image.
+type memoryEntryReaderAt struct {
+	mr      *MemoryReader
+	session *memoryReadSession
+	entry   *memoryEntry
+}
+
+func (r *memoryEntryReaderAt) ReadAt(buffer []byte, offset int64) (int, error) {
+	if len(buffer) == 0 {
+		return 0, nil
+	}
+	if offset < 0 {
+		return 0, fmt.Errorf("memory entry offset cannot be negative: %d", offset)
+	}
+	if r.entry == nil {
+		return 0, errors.New("memory entry is not selected")
+	}
+
+	entrySize := r.entry.end - r.entry.vaddr
+	entryOffset := uint64(offset)
+	if entryOffset >= entrySize {
+		return 0, io.EOF
+	}
+	readSize := min(uint64(len(buffer)), entrySize-entryOffset)
+	start := r.entry.vaddr + entryOffset
+	memory, err := r.mr.readMemRange(r.session, start, start+readSize)
+	if err != nil {
+		return 0, err
+	}
+	n := copy(buffer, memory.Bytes())
+	if n != len(buffer) {
+		return n, io.EOF
+	}
+	return n, nil
 }
 
 func readMemoryAt(reader io.ReaderAt, buff []byte, initialOffset, offset uint64) error {
@@ -550,36 +515,34 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 	}
 
 	var results []PatternMatch
-
-	f, err := os.Open(filepath.Join(mr.checkpointDir, fmt.Sprintf("pages-%d.img", mr.pagesID)))
+	layer, err := mr.memoryLayer()
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = f.Close() }()
+	session, err := newMemoryReadSession(layer)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = session.close() }()
+
+	entryReader := &memoryEntryReaderAt{mr: mr, session: session}
 	var streamReader *memoryRuneReader
 	if needsStreaming {
-		streamReader = newMemoryRuneReader(f, chunkSize)
+		streamReader = newMemoryRuneReader(entryReader, chunkSize)
 	}
 
-	for _, entry := range mr.pagemapEntries {
-		startAddr := entry.GetVaddr()
-		endAddr := startAddr + entry.GetNrPages()*uint64(mr.pageSize)
-		entrySize := endAddr - startAddr
-
-		initialOffset := uint64(0)
-		for _, e := range mr.pagemapEntries {
-			if e == entry {
-				break
-			}
-			initialOffset += e.GetNrPages() * uint64(mr.pageSize)
-		}
+	for index := range layer.entries {
+		entry := &layer.entries[index]
+		entryReader.entry = entry
+		startAddr := entry.vaddr
+		entrySize := entry.end - entry.vaddr
 
 		if needsStreaming {
 			matches, err := searchPatternStream(
-				f,
+				entryReader,
 				streamPatterns,
 				streamReader,
-				initialOffset,
+				0,
 				startAddr,
 				entrySize,
 				context,
@@ -595,10 +558,10 @@ func (mr *MemoryReader) SearchPattern(pattern string, escapeRegExpCharacters boo
 			patternTable = literalFailureTable(literalPattern)
 		}
 		matches, err := searchLiteralPattern(
-			f,
+			entryReader,
 			literalPattern,
 			patternTable,
-			initialOffset,
+			0,
 			startAddr,
 			entrySize,
 			context,
