@@ -78,8 +78,12 @@ type PagemapEntry struct {
 	Vaddr         *uint64 `protobuf:"varint,1,req,name=vaddr" json:"vaddr,omitempty"`
 	CompatNrPages *uint32 `protobuf:"varint,2,req,name=compat_nr_pages,json=compatNrPages" json:"compat_nr_pages,omitempty"`
 	InParent      *bool   `protobuf:"varint,3,opt,name=in_parent,json=inParent" json:"in_parent,omitempty"`
-	Flags         *uint32 `protobuf:"varint,4,opt,name=flags" json:"flags,omitempty"`
-	NrPages       *uint64 `protobuf:"varint,5,opt,name=nr_pages,json=nrPages" json:"nr_pages,omitempty"`
+	// PE_PAYLOAD_ALIGNED means that payload bytes for this present entry
+	// begin at the next host-page boundary in pages-*.img. Readers must skip
+	// the padding before applying block_sizes[] or the ordinary raw size.
+	Flags   *uint32        `protobuf:"varint,4,opt,name=flags" json:"flags,omitempty"`
+	NrPages *uint64        `protobuf:"varint,5,opt,name=nr_pages,json=nrPages" json:"nr_pages,omitempty"`
+	Blocks  *PagemapBlocks `protobuf:"bytes,6,opt,name=blocks" json:"blocks,omitempty"`
 }
 
 func (x *PagemapEntry) Reset() {
@@ -149,6 +153,95 @@ func (x *PagemapEntry) GetNrPages() uint64 {
 	return 0
 }
 
+func (x *PagemapEntry) GetBlocks() *PagemapBlocks {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+type PagemapBlocks struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Size in bytes of each stored block in the pages image.
+	// One element per compressed block (of pages_per_block pages).
+	// Special values:
+	//
+	//	0 = all-zero block, no payload is stored in the image.
+	//	N = stored raw (incompressible), where N is uncompressed block size:
+	//	    pages_per_block * PAGE_SIZE (the last block of an entry may
+	//	    hold fewer than pages_per_block pages).
+	//
+	// Any other value is the length of the compressed payload.
+	//
+	// Packed encoding avoids one protobuf tag per memory page.
+	BlockSizes []uint32 `protobuf:"varint,1,rep,packed,name=block_sizes,json=blockSizes" json:"block_sizes,omitempty"`
+	// Total payload bytes this entry occupies in the pages image
+	// (sum of all block_sizes[]). On restore it is an O(1) shortcut to
+	// advance the read offset past a whole entry (see skip_pagemap_pages())
+	// instead of summing block_sizes[] block by block. Offsets into the
+	// interior of an entry are still derived by walking block_sizes[], since
+	// a single total cannot locate an individual page.
+	TotalPayloadSize *uint64 `protobuf:"varint,2,req,name=total_payload_size,json=totalPayloadSize" json:"total_payload_size,omitempty"`
+	// Number of memory pages in each compressed block (block granularity).
+	PagesPerBlock *uint32 `protobuf:"varint,3,req,name=pages_per_block,json=pagesPerBlock" json:"pages_per_block,omitempty"`
+}
+
+func (x *PagemapBlocks) Reset() {
+	*x = PagemapBlocks{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pagemap_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PagemapBlocks) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PagemapBlocks) ProtoMessage() {}
+
+func (x *PagemapBlocks) ProtoReflect() protoreflect.Message {
+	mi := &file_pagemap_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PagemapBlocks.ProtoReflect.Descriptor instead.
+func (*PagemapBlocks) Descriptor() ([]byte, []int) {
+	return file_pagemap_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PagemapBlocks) GetBlockSizes() []uint32 {
+	if x != nil {
+		return x.BlockSizes
+	}
+	return nil
+}
+
+func (x *PagemapBlocks) GetTotalPayloadSize() uint64 {
+	if x != nil && x.TotalPayloadSize != nil {
+		return *x.TotalPayloadSize
+	}
+	return 0
+}
+
+func (x *PagemapBlocks) GetPagesPerBlock() uint32 {
+	if x != nil && x.PagesPerBlock != nil {
+		return *x.PagesPerBlock
+	}
+	return 0
+}
+
 var File_pagemap_proto protoreflect.FileDescriptor
 
 var file_pagemap_proto_rawDesc = []byte{
@@ -156,7 +249,7 @@ var file_pagemap_proto_rawDesc = []byte{
 	0x0a, 0x6f, 0x70, 0x74, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x29, 0x0a, 0x0c, 0x70,
 	0x61, 0x67, 0x65, 0x6d, 0x61, 0x70, 0x5f, 0x68, 0x65, 0x61, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x70,
 	0x61, 0x67, 0x65, 0x73, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x02, 0x28, 0x0d, 0x52, 0x07, 0x70,
-	0x61, 0x67, 0x65, 0x73, 0x49, 0x64, 0x22, 0xb3, 0x01, 0x0a, 0x0d, 0x70, 0x61, 0x67, 0x65, 0x6d,
+	0x61, 0x67, 0x65, 0x73, 0x49, 0x64, 0x22, 0xdc, 0x01, 0x0a, 0x0d, 0x70, 0x61, 0x67, 0x65, 0x6d,
 	0x61, 0x70, 0x5f, 0x65, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x1b, 0x0a, 0x05, 0x76, 0x61, 0x64, 0x64,
 	0x72, 0x18, 0x01, 0x20, 0x02, 0x28, 0x04, 0x42, 0x05, 0xd2, 0x3f, 0x02, 0x08, 0x01, 0x52, 0x05,
 	0x76, 0x61, 0x64, 0x64, 0x72, 0x12, 0x26, 0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x70, 0x61, 0x74, 0x5f,
@@ -167,7 +260,19 @@ var file_pagemap_proto_rawDesc = []byte{
 	0x61, 0x67, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0d, 0x42, 0x0f, 0xd2, 0x3f, 0x0c, 0x1a, 0x0a,
 	0x70, 0x6d, 0x61, 0x70, 0x2e, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x52, 0x05, 0x66, 0x6c, 0x61, 0x67,
 	0x73, 0x12, 0x19, 0x0a, 0x08, 0x6e, 0x72, 0x5f, 0x70, 0x61, 0x67, 0x65, 0x73, 0x18, 0x05, 0x20,
-	0x01, 0x28, 0x04, 0x52, 0x07, 0x6e, 0x72, 0x50, 0x61, 0x67, 0x65, 0x73,
+	0x01, 0x28, 0x04, 0x52, 0x07, 0x6e, 0x72, 0x50, 0x61, 0x67, 0x65, 0x73, 0x12, 0x27, 0x0a, 0x06,
+	0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70,
+	0x61, 0x67, 0x65, 0x6d, 0x61, 0x70, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x06, 0x62,
+	0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x22, 0x8b, 0x01, 0x0a, 0x0e, 0x70, 0x61, 0x67, 0x65, 0x6d, 0x61,
+	0x70, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x12, 0x23, 0x0a, 0x0b, 0x62, 0x6c, 0x6f, 0x63,
+	0x6b, 0x5f, 0x73, 0x69, 0x7a, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0d, 0x42, 0x02, 0x10,
+	0x01, 0x52, 0x0a, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x69, 0x7a, 0x65, 0x73, 0x12, 0x2c, 0x0a,
+	0x12, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x73,
+	0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x02, 0x28, 0x04, 0x52, 0x10, 0x74, 0x6f, 0x74, 0x61, 0x6c,
+	0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x26, 0x0a, 0x0f, 0x70,
+	0x61, 0x67, 0x65, 0x73, 0x5f, 0x70, 0x65, 0x72, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x03,
+	0x20, 0x02, 0x28, 0x0d, 0x52, 0x0d, 0x70, 0x61, 0x67, 0x65, 0x73, 0x50, 0x65, 0x72, 0x42, 0x6c,
+	0x6f, 0x63, 0x6b,
 }
 
 var (
@@ -182,17 +287,19 @@ func file_pagemap_proto_rawDescGZIP() []byte {
 	return file_pagemap_proto_rawDescData
 }
 
-var file_pagemap_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_pagemap_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pagemap_proto_goTypes = []interface{}{
-	(*PagemapHead)(nil),  // 0: pagemap_head
-	(*PagemapEntry)(nil), // 1: pagemap_entry
+	(*PagemapHead)(nil),   // 0: pagemap_head
+	(*PagemapEntry)(nil),  // 1: pagemap_entry
+	(*PagemapBlocks)(nil), // 2: pagemap_blocks
 }
 var file_pagemap_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: pagemap_entry.blocks:type_name -> pagemap_blocks
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_pagemap_proto_init() }
@@ -225,6 +332,18 @@ func file_pagemap_proto_init() {
 				return nil
 			}
 		}
+		file_pagemap_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PagemapBlocks); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -232,7 +351,7 @@ func file_pagemap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pagemap_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
