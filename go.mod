@@ -1,11 +1,11 @@
 module github.com/checkpoint-restore/go-criu/v8
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/aperturerobotics/protobuf-go-lite v0.18.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	google.golang.org/protobuf v1.36.12
 )
 
