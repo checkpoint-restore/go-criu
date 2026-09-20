@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+// genMessageMarshaler emits the custom JSON marshaler for a message.
 func (g *jsonGenerator) genMessageMarshaler(message *protogen.Message) {
 	g.P("// MarshalProtoJSON marshals the ", message.GoIdent, " message to JSON.")
 	g.P("func (x *", message.GoIdent, ") MarshalProtoJSON(s *", jsonPluginPackage.Ident("MarshalState"), ") {")
@@ -30,6 +31,23 @@ func (g *jsonGenerator) genMessageMarshaler(message *protogen.Message) {
 
 	// wroteField keeps track of whether we wrote a field, so that we know when to add a comma before the next.
 	g.P("var wroteField bool")
+
+	interleavedOneofs := make(map[*protogen.Oneof]bool)
+	for _, oneof := range message.Oneofs {
+		if oneof.Desc.IsSynthetic() {
+			continue
+		}
+		first, last := -1, -1
+		for i, field := range message.Fields {
+			if field.Oneof == oneof {
+				if first == -1 {
+					first = i
+				}
+				last = i
+			}
+		}
+		interleavedOneofs[oneof] = last-first+1 != len(oneof.Fields)
+	}
 
 nextField:
 	for _, field := range message.Fields {
@@ -142,17 +160,18 @@ nextField:
 		// The identifier of the message is x, but in case of a oneof, we'll be operating on ov.
 		messageOrOneofIdent := "x"
 
-		// If this is the first field in a oneof, write the if statement that checks for nil
-		// and start the switch statement for the oneof type.
-		if field.Oneof != nil && field == field.Oneof.Fields[0] && !field.Oneof.Desc.IsSynthetic() {
-			// NOTE: we don't support field masks here (yet).
-			g.P("if x.", field.Oneof.GoName, " != nil {")
-			g.P("switch ov := x.", field.Oneof.GoName, ".(type) {")
-		}
-
 		if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
-			// If we're in a oneof, check if this is the field that's set in the oneof.
-			g.P("case *", field.GoIdent.GoName, ":")
+			if interleavedOneofs[field.Oneof] {
+				// A type guard keeps each interleaved real oneof member at its
+				// descriptor position without enclosing ordinary fields.
+				g.P("if ov, ok := x.", field.Oneof.GoName, ".(*", field.GoIdent.GoName, "); ok {")
+			} else {
+				if field == field.Oneof.Fields[0] {
+					g.P("if x.", field.Oneof.GoName, " != nil {")
+					g.P("switch ov := x.", field.Oneof.GoName, ".(type) {")
+				}
+				g.P("case *", field.GoIdent.GoName, ":")
+			}
 			messageOrOneofIdent = "ov"
 		} else {
 			// If we're not in a oneof, start "if not zero value".
@@ -222,15 +241,11 @@ nextField:
 			// g.P(jsonPluginPackage.Ident("MarshalMessage"), "(s, ", ifThenElse(nullable, "", "&"), messageOrOneofIdent, ".", fieldGoName, ")")
 		}
 
-		// If we're not in a oneof, end the "if not zero".
-		if field.Oneof == nil || field.Oneof.Desc.IsSynthetic() {
-			g.P("}") // end if x.{field.GoName} != zero value {
-		}
-
-		// If this is the last field in the oneof, close the switch and if statements.
-		if field.Oneof != nil && field == field.Oneof.Fields[len(field.Oneof.Fields)-1] && !field.Oneof.Desc.IsSynthetic() {
-			g.P("}") // end switch v := x.{field.Oneof.GoName}.(type) {
-			g.P("}") // end if x.{field.Oneof.GoName} != nil {
+		if field.Oneof == nil || field.Oneof.Desc.IsSynthetic() || interleavedOneofs[field.Oneof] {
+			g.P("}") // end field presence or interleaved oneof type guard
+		} else if field == field.Oneof.Fields[len(field.Oneof.Fields)-1] {
+			g.P("}") // end real oneof switch
+			g.P("}") // end real oneof presence guard
 		}
 	}
 
@@ -240,6 +255,7 @@ nextField:
 	g.P()
 }
 
+// genStdMessageMarshaler emits the standard-library JSON marshaler adapter.
 func (g *jsonGenerator) genStdMessageMarshaler(message *protogen.Message) {
 	g.P("// MarshalJSON marshals the ", message.GoIdent, " to JSON.")
 	g.P("func (x *", message.GoIdent, ") MarshalJSON() ([]byte, error) {")
