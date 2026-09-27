@@ -61,7 +61,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string, 
 		err = c.Dump(opts, TestNfy{})
 	}
 	if err != nil {
-		return fmt.Errorf("dump fail: %w", err)
+		return fmt.Errorf("dump failed: %w", err)
 	}
 
 	return nil
@@ -184,13 +184,13 @@ func main() {
 	if version != version2 {
 		log.Fatalf("Detected versions do not match (%d != %d)", version, version2)
 	}
-	// Check if version at least 3.2
+	// Check if version is at least 3.2
 	result, err := c.IsCriuAtLeast(30200)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	if !result {
-		log.Fatalln("CRIU version to old")
+		log.Fatalln("CRIU version too old")
 	}
 
 	if err := utils.CheckForCriu(30200); err != nil {
