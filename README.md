@@ -41,6 +41,60 @@ or to just check if at least a certain CRIU version is installed:
 	result, err := c.IsCriuAtLeast(31100)
 ```
 
+### Plugin options
+
+Set `rpc.CriuOpts.PluginOptions` to pass options to CRIU plugins for each
+request. Each entry uses `PLUGIN.NAME[=VALUE]` syntax, without leading `--`
+or the CLI's `--plugin-option=` prefix. For example, add CUDA options to
+otherwise configured dump options:
+
+```go
+opts.PluginOptions = []string{
+	"cuda_plugin.backend=cuda-checkpoint",
+	"cuda_plugin.timeout=600",
+}
+if err := c.Dump(opts, nil); err != nil {
+	return err
+}
+```
+
+For restore, set options on the restore request:
+
+```go
+restoreOpts.PluginOptions = []string{
+	"cuda_plugin.backend=driver-api",
+	"cuda_plugin.device-map=auto",
+}
+if err := c.Restore(restoreOpts, nil); err != nil {
+	return err
+}
+```
+
+CUDA supports these options in CRIU builds that provide the corresponding
+plugin functionality:
+
+- `cuda_plugin.backend`: `auto` (the default), `driver-api`, or
+  `cuda-checkpoint`.
+- `cuda_plugin.timeout`: a nonnegative number of seconds, with `0` (the
+  default) meaning unlimited. This limits CLI helper invocations; it does
+  not impose a deadline on in-process Driver API calls. It is separate from
+  `CriuOpts.Timeout`, which controls task freezing and the native CUDA lock
+  timeout.
+- `cuda_plugin.device-map`: `auto` or explicit mappings such as `0=1,1=0`.
+  This option is valid only for restore.
+
+The slice preserves option order, including repeated keys. CRIU validates
+option syntax, and each plugin interprets its recognized settings. Options
+belong to the supplied `CriuOpts`; use separate options for dump and restore,
+or replace the slice when reusing an options object.
+
+The CRIU executable must support the `plugin_options` RPC field and have the
+required plugin installed and available. Older CRIU builds may silently
+ignore the unknown protobuf field, so request success alone does not prove
+that the options were applied. `FeatureCheck` currently has no capability
+flag for plugin options. Verify the CRIU build and plugin support used by
+your application.
+
 ## CRIT
 
 The `crit` package provides bindings to decode, encode, compress, and decompress
