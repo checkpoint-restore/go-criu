@@ -31,6 +31,7 @@ func doDump(c *criu.Criu, pidS string, imgDir string, pre bool, prevImg string, 
 	if err != nil {
 		return fmt.Errorf("can't parse pid: %w", err)
 	}
+	// #nosec G703 -- The test runner intentionally accepts a caller-selected image directory.
 	img, err := os.Open(filepath.Clean(imgDir))
 	if err != nil {
 		return fmt.Errorf("can't open image dir: %w", err)
@@ -234,6 +235,7 @@ func main() {
 		}
 	case "restore":
 		log.Println("Restoring")
+		// #nosec G703 -- The test runner intentionally accepts a caller-selected image directory.
 		img, err := os.Open(filepath.Clean(os.Args[2]))
 		if err != nil {
 			log.Fatalln("can't open image dir:", err)
