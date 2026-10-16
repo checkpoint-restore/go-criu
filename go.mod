@@ -6,7 +6,7 @@ require (
 	github.com/aperturerobotics/protobuf-go-lite v0.19.0
 	github.com/pierrec/lz4/v4 v4.1.33
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/sys v0.48.0
+	golang.org/x/sys v0.49.0
 	google.golang.org/protobuf v1.36.12
 )
 
