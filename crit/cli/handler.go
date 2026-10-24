@@ -245,5 +245,5 @@ func protoHandler(magic string) (proto.Message, error) {
 	case "GHOST_FILE":
 		return nil, nil
 	}
-	return nil, fmt.Errorf("no protobuf binding found for magic 0x%x", magic)
+	return nil, fmt.Errorf("no protobuf binding found for magic %q", magic)
 }

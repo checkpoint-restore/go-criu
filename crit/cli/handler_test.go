@@ -92,7 +92,7 @@ func TestGetEntryTypeFromJSON(t *testing.T) {
 			name:        "unknown magic string",
 			jsonContent: `{"magic": "NONEXISTENT_MAGIC"}`,
 			wantErr:     true,
-			errContains: "no protobuf binding found for magic",
+			errContains: `no protobuf binding found for magic "NONEXISTENT_MAGIC"`,
 		},
 	}
 
