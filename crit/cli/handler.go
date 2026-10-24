@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -95,7 +96,12 @@ func GetEntryTypeFromJSON(jsonFile *os.File) (proto.Message, error) {
 		return nil, err
 	}
 
-	return protoHandler(img["magic"].(string))
+	magic, ok := img["magic"].(string)
+	if !ok || magic == "" {
+		return nil, errors.New("missing or invalid 'magic' field in JSON image")
+	}
+
+	return protoHandler(magic)
 }
 
 func protoHandler(magic string) (proto.Message, error) {
@@ -239,5 +245,5 @@ func protoHandler(magic string) (proto.Message, error) {
 	case "GHOST_FILE":
 		return nil, nil
 	}
-	return nil, fmt.Errorf("no protobuf binding found for magic 0x%x", magic)
+	return nil, fmt.Errorf("no protobuf binding found for magic %q", magic)
 }
