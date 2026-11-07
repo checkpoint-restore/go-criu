@@ -2,6 +2,7 @@ package crit
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -25,6 +26,9 @@ func getStats(path string) (*stats.StatsEntry, error) {
 	statsImg, err := c.Decode(&stats.StatsEntry{})
 	if err != nil {
 		return nil, err
+	}
+	if len(statsImg.Entries) == 0 {
+		return nil, fmt.Errorf("%s has no entries", path)
 	}
 
 	stats, ok := statsImg.Entries[0].Message.(*stats.StatsEntry)
