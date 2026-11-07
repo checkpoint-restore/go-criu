@@ -386,13 +386,15 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 				PhyPages: int64(pagemapData.GetNrPages()),
 			}
 
-			for vmas[vmaIndex].GetEnd() <= pagemapData.GetVaddr() {
+			for vmaIndex < len(vmas) && vmas[vmaIndex].GetEnd() <= pagemapData.GetVaddr() {
 				vmaIndex++
 			}
 			// Compute last virtual address
 			pagemapEnd := pagemapData.GetVaddr() + (pagemapData.GetNrPages() << 12)
 
-			for vmas[vmaIndex].GetStart() < pagemapEnd {
+			// Stop at the end of the VMA list: a pagemap entry covering the
+			// last VMA would otherwise index past it
+			for vmaIndex < len(vmas) && vmas[vmaIndex].GetStart() < pagemapEnd {
 				if vmaIndex == vmaIndexPrev {
 					// Use tilde to indicate that VMA is of the previous pagemap entry
 					rss.Vmas = append(rss.Vmas, &Vma{Addr: "~"})
