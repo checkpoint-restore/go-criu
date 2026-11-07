@@ -18,7 +18,7 @@ import (
 // associated state (memory pages, file descriptors, sockets, etc). The function
 // checks whether a process with the given pID has associated state.
 func (c *crit) taskHasState(pID uint32) (bool, error) {
-	coreImg, err := getImg(
+	coreData, err := getFirstEntry(
 		filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)),
 		&criu_core.CoreEntry{},
 	)
@@ -26,7 +26,6 @@ func (c *crit) taskHasState(pID uint32) (bool, error) {
 		return false, err
 	}
 
-	coreData := coreImg.Entries[0].Message.(*criu_core.CoreEntry)
 	state := TaskState(coreData.GetTc().GetTaskState())
 
 	return state.IsAliveOrStopped(), nil
@@ -58,11 +57,10 @@ func (c *crit) ExplorePs() (*PsTree, error) {
 		process := entry.Message.(*pstree.PstreeEntry)
 		pID := process.GetPid()
 
-		coreImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)), &criu_core.CoreEntry{})
+		coreData, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("core-%d.img", pID)), &criu_core.CoreEntry{})
 		if err != nil {
 			return nil, err
 		}
-		coreData := coreImg.Entries[0].Message.(*criu_core.CoreEntry)
 
 		ps := &PsTree{
 			PID:     pID,
@@ -126,11 +124,11 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 		}
 
 		// Get file with object IDs
-		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
+		ids, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
 		if err != nil {
 			return nil, err
 		}
-		filesID := idsImg.Entries[0].Message.(*criu_core.TaskKobjIdsEntry).GetFilesId()
+		filesID := ids.GetFilesId()
 		// Get open file descriptors
 		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)), &fdinfo.FdinfoEntry{})
 		if err != nil {
@@ -153,11 +151,10 @@ func (c *crit) ExploreFds() ([]*Fd, error) {
 			fdEntry.Files = append(fdEntry.Files, &file)
 		}
 		// Get chroot and chdir info
-		fsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pID)), &fs.FsEntry{})
+		fs, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("fs-%d.img", pID)), &fs.FsEntry{})
 		if err != nil {
 			return nil, err
 		}
-		fs := fsImg.Entries[0].Message.(*fs.FsEntry)
 		filePath, err := getFilePath(c.inputDirPath,
 			fs.GetCwdId(), fdinfo.FdTypes_REG)
 		if err != nil {
@@ -237,11 +234,10 @@ func (c *crit) ExploreMems() ([]*MemMap, error) {
 		}
 
 		// Get memory mappings
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
+		mmInfo, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
 			return nil, err
 		}
-		mmInfo := mmImg.Entries[0].Message.(*mm.MmEntry)
 		exePath, err := getFilePath(c.inputDirPath,
 			mmInfo.GetExeFileId(), fdinfo.FdTypes_REG)
 		if err != nil {
@@ -365,11 +361,11 @@ func (c *crit) ExploreRss() ([]*RssMap, error) {
 		}
 
 		// Get virtual memory addresses
-		mmImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
+		mmInfo, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("mm-%d.img", pID)), &mm.MmEntry{})
 		if err != nil {
 			return nil, err
 		}
-		vmas := mmImg.Entries[0].Message.(*mm.MmEntry).GetVmas()
+		vmas := mmInfo.GetVmas()
 		// Get physical memory addresses
 		pagemapImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("pagemap-%d.img", pID)), &pagemap.PagemapEntry{})
 		if err != nil {
@@ -474,11 +470,11 @@ func (c *crit) ExploreSk() ([]*Sk, error) {
 		}
 
 		// Get file with object IDs
-		idsImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
+		ids, err := getFirstEntry(filepath.Join(c.inputDirPath, fmt.Sprintf("ids-%d.img", pID)), &criu_core.TaskKobjIdsEntry{})
 		if err != nil {
 			return nil, err
 		}
-		filesID := idsImg.Entries[0].Message.(*criu_core.TaskKobjIdsEntry).GetFilesId()
+		filesID := ids.GetFilesId()
 		// Get open file descriptors
 		fdInfoImg, err := getImg(filepath.Join(c.inputDirPath, fmt.Sprintf("fdinfo-%d.img", filesID)), &fdinfo.FdinfoEntry{})
 		if err != nil {
