@@ -207,6 +207,23 @@ func getImg(path string, entryType proto.Message) (*CriuImage, error) {
 	return decodeImg(file, entryType, false)
 }
 
+// Helper to decode an image and return its first entry
+func getFirstEntry[T proto.Message](path string, entryType T) (T, error) {
+	var zero T
+	img, err := getImg(path, entryType)
+	if err != nil {
+		return zero, err
+	}
+	if len(img.Entries) == 0 {
+		return zero, fmt.Errorf("%s has no entries", path)
+	}
+	entry, ok := img.Entries[0].Message.(T)
+	if !ok {
+		return zero, fmt.Errorf("%s has an unexpected entry type", path)
+	}
+	return entry, nil
+}
+
 // Global variables to cache loaded images
 var (
 	filesImg, regImg, pipeImg, unixSkImg *CriuImage

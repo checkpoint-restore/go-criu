@@ -88,24 +88,22 @@ func (mr *MemoryReader) GetMemPages(start, end uint64) (*bytes.Buffer, error) {
 
 // GetPsArgs retrieves process arguments from memory pages
 func (mr *MemoryReader) GetPsArgs() (*bytes.Buffer, error) {
-	mmImg, err := getImg(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
+	mmEntry, err := getFirstEntry(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
 	if err != nil {
 		return nil, err
 	}
-	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
 
-	return mr.GetMemPages(mm.GetMmArgStart(), mm.GetMmArgEnd())
+	return mr.GetMemPages(mmEntry.GetMmArgStart(), mmEntry.GetMmArgEnd())
 }
 
 // GetPsArgs retrieves process environment variables from memory pages.
 func (mr *MemoryReader) GetPsEnvVars() (*bytes.Buffer, error) {
-	mmImg, err := getImg(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
+	mmEntry, err := getFirstEntry(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
 	if err != nil {
 		return nil, err
 	}
-	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
 
-	return mr.GetMemPages(mm.GetMmEnvStart(), mm.GetMmEnvEnd())
+	return mr.GetMemPages(mmEntry.GetMmEnvStart(), mmEntry.GetMmEnvEnd())
 }
 
 func (mr *MemoryReader) GetPagemapEntries() []*pagemap.PagemapEntry {
@@ -114,14 +112,13 @@ func (mr *MemoryReader) GetPagemapEntries() []*pagemap.PagemapEntry {
 
 // GetShmemSize calculates and returns the size of shared memory used by the process.
 func (mr *MemoryReader) GetShmemSize() (int64, error) {
-	mmImg, err := getImg(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
+	mmEntry, err := getFirstEntry(filepath.Join(mr.checkpointDir, fmt.Sprintf("mm-%d.img", mr.pid)), &mm.MmEntry{})
 	if err != nil {
 		return 0, err
 	}
 
 	var size int64
-	mm := mmImg.Entries[0].Message.(*mm.MmEntry)
-	for _, vma := range mm.GetVmas() {
+	for _, vma := range mmEntry.GetVmas() {
 		// Check if VMA has the MAP_SHARED flag set in its flags
 		if vma.GetFlags()&mapShared != 0 {
 			size += int64(vma.GetEnd() - vma.GetStart())
